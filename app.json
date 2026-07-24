@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Latte Art Coach",
+    "slug": "latte-art-coach",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "latteartcoach",
+    "userInterfaceStyle": "light",
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a latte art photo to analyze locally on your device."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
