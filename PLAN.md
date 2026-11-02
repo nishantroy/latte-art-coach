@@ -4,7 +4,7 @@ This file is the canonical plan. Scope or architecture changes must update it.
 
 ## Product
 
-You take or pick a photo of a heart you poured. Within about half a second the app shows a score, an overlay showing what's off, and a couple of specific things to change on the next pour. Everything runs on the device.
+You take or pick a photo of a tulip you poured. Within about half a second the app shows a score, an overlay showing what's off, and a couple of specific things to change on the next pour. Everything runs on the device.
 
 ## Requirements
 
@@ -17,7 +17,7 @@ You take or pick a photo of a heart you poured. Within about half a second the a
 
 - **`LatteArtCoach/`** is the SwiftUI app target. Its Xcode project is generated from `project.yml` by XcodeGen. The `.xcodeproj` isn't checked in.
 - **`Packages/LatteCore/`** is a Swift package with no UI dependencies. It holds image preparation, cup detection, foam segmentation, measurements, scoring and the rule-based tips. `swift test` runs it on the Mac in seconds.
-- **Pattern analyzers:** each pattern implements a shared analyzer protocol. The heart is the first one. Tulip and rosetta can be added later without touching the heart code.
+- **Pattern analyzers:** each pattern implements a shared analyzer protocol. The tulip is the first one. Heart and rosetta can be added later without touching the tulip code.
 - **Image math** runs on Accelerate (vDSP and vImage) and Core Image rather than per-pixel Swift loops where it matters.
 - **Coaching:** Foundation Models (`LanguageModelSession` with `@Generable` output) turns the metrics into specific tips. When Apple Intelligence isn't available, rule-based tips from LatteCore are used instead.
 - **Image observations (iOS 27, needs Xcode 27):** the model is also given the photo and adds qualitative notes, such as a smeared base. These are shown beside the score and never feed into it.
@@ -27,7 +27,9 @@ You take or pick a photo of a heart you poured. Within about half a second the a
 | Step | Scope | Verified by | Status |
 | --- | --- | --- | --- |
 | 1 | Scaffold: XcodeGen project, LatteCore package, app shell, `scripts/test.sh` | `swift test`; UI test launches the app | Done |
-| 2 | LatteCore heart analysis: cup detection, segmentation, metrics, score | Fixture tests on real pour photos; timing tests | |
+| 2a | Cup detection: crema region scoring, ellipse fit for angled photos | Six real pours with eye-checked ellipses; timing test | Done |
+| 2b | Foam segmentation inside the cup, glare rejection, pattern axis and direction | Fixture tests; debug overlays | |
+| 2c | Tulip metrics and score: centering, symmetry, contrast, size, stack count and separation, stem | Score order matches the hand ranking of the fixtures | |
 | 3 | App flow: pick a photo, frame it (auto cup detection with manual adjust), results with overlay | XCUITest in the Simulator | |
 | 4 | Foundation Models coaching from metrics, plus the rule-based fallback | Unit tests for the fallback; on-device check | |
 | 5 | iOS 27 image observations | Xcode 27, on-device | |
@@ -37,7 +39,14 @@ You take or pick a photo of a heart you poured. Within about half a second the a
 ## Later (tracked, not scheduled)
 
 - Pour history and progress over time, such as symmetry improving this week.
-- Tulip and rosetta patterns.
+- Heart and rosetta patterns.
+
+## Tulip analysis notes
+
+- The six fixture photos in `Packages/LatteCore/Tests/LatteCoreTests/Fixtures/pours/` were all meant as tulips. They came out with wing-shaped, blended stacks that look like rosettas. Telling those apart is a core coaching signal: distinct, rounded stacks mean clean pushes with the flow stopped between them, while thin, wavy layers mean the pitcher kept wiggling.
+- Real photos are taken at an angle, so the cup surface is an ellipse. Measurements happen after mapping that ellipse to a circle.
+- The handle and the pattern point in any direction, and pour 1 is rotated 90°. The pattern axis comes from the foam itself.
+- White countertops look like foam, so all foam analysis is restricted to the detected cup surface.
 
 ## Notes
 

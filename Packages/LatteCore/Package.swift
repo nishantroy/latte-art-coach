@@ -7,6 +7,10 @@ let package = Package(
   products: [.library(name: "LatteCore", targets: ["LatteCore"])],
   targets: [
     .target(name: "LatteCore"),
-    .testTarget(name: "LatteCoreTests", dependencies: ["LatteCore"]),
+    .testTarget(
+      name: "LatteCoreTests",
+      dependencies: ["LatteCore"],
+      resources: [.copy("Fixtures")]
+    ),
   ]
 )

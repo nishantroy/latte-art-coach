@@ -16,7 +16,7 @@ fi
 mkdir -p "$CACHE"
 
 echo "== LatteCore unit tests"
-swift test --package-path Packages/LatteCore --scratch-path "$CACHE/spm-LatteCore"
+swift test -c release --package-path Packages/LatteCore --scratch-path "$CACHE/spm-LatteCore"
 
 [ "${SKIP_UI:-}" = 1 ] && exit 0
 
