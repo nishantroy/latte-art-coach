@@ -1,0 +1,49 @@
+name: LatteArtCoach
+options:
+  bundleIdPrefix: com.nishantroy
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: ""
+packages:
+  LatteCore:
+    path: Packages/LatteCore
+targets:
+  LatteArtCoach:
+    type: application
+    platform: iOS
+    sources: [LatteArtCoach]
+    dependencies:
+      - package: LatteCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nishantroy.latteartcoach
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Latte Coach
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+  LatteArtCoachUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [LatteArtCoachUITests]
+    dependencies:
+      - target: LatteArtCoach
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nishantroy.latteartcoach.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: LatteArtCoach
+schemes:
+  LatteArtCoach:
+    build:
+      targets:
+        LatteArtCoach: all
+    test:
+      targets:
+        - LatteArtCoachUITests
