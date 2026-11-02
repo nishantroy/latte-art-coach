@@ -28,7 +28,7 @@ You take or pick a photo of a tulip you poured. Within about half a second the a
 | --- | --- | --- | --- |
 | 1 | Scaffold: XcodeGen project, LatteCore package, app shell, `scripts/test.sh` | `swift test`; UI test launches the app | Done |
 | 2a | Cup detection: crema region scoring, ellipse fit for angled photos | Six real pours with eye-checked ellipses; timing test | Done |
-| 2b | Foam segmentation inside the cup, glare rejection, pattern axis and direction | Fixture tests; debug overlays | |
+| 2b | Foam segmentation inside the cup, glare rejection, pattern axis and direction | Fixture axes eye-checked; synthetic patterns at known angles; timing test | Done |
 | 2c | Tulip metrics and score: centering, symmetry, contrast, size, stack count and separation, stem | Score order matches the hand ranking of the fixtures | |
 | 3 | App flow: pick a photo, frame it (auto cup detection with manual adjust), results with overlay | XCUITest in the Simulator | |
 | 4 | Foundation Models coaching from metrics, plus the rule-based fallback | Unit tests for the fallback; on-device check | |
@@ -47,6 +47,8 @@ You take or pick a photo of a tulip you poured. Within about half a second the a
 - Real photos are taken at an angle, so the cup surface is an ellipse. Measurements happen after mapping that ellipse to a circle.
 - The handle and the pattern point in any direction, and pour 1 is rotated 90°. The pattern axis comes from the foam itself.
 - White countertops look like foam, so all foam analysis is restricted to the detected cup surface.
+- The axis is the line of best mirror symmetry. Its direction comes from the crema lines between stacks, which form chevrons pointing at the stem.
+- The foam cleanup step (morphological opening) erases the thin pull-through stem. The stem metric in 2c has to measure it before cleanup or from the raw whiteness.
 
 ## Notes
 

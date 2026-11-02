@@ -5,18 +5,25 @@ import Testing
 /// Latency budgets on the Mac. Debug builds are unoptimized, so the budget is
 /// only enforced for release (`swift test -c release`), which scripts/test.sh uses.
 @Suite struct PerformanceTests {
-  @Test func cupDetectionIsFast() throws {
+  @Test func analysisPipelineIsFast() throws {
     let url = Fixtures.pourURL(3)
-    let start = ContinuousClock.now
     let runs = 5
+    var cupTime = Duration.zero, total = Duration.zero
     for _ in 0..<runs {
-      let image = try RGBAImage.load(contentsOf: url)
-      _ = try CupDetector.detect(LabImage(image))
+      let start = ContinuousClock.now
+      let lab = LabImage(try RGBAImage.load(contentsOf: url))
+      let cup = try CupDetector.detect(lab)
+      let afterCup = ContinuousClock.now
+      let surface = CupSurface(lab: lab, ellipse: cup.ellipse)
+      let foam = FoamSegmenter.segment(surface)
+      _ = PatternAxis.find(surface: surface, mask: foam.mask)
+      let end = ContinuousClock.now
+      cupTime += afterCup - start
+      total += end - start
     }
-    let perRun = (ContinuousClock.now - start) / runs
-    print("decode + Lab + cup detection: \(perRun)")
+    print("decode + cup: \(cupTime / runs), through axis: \(total / runs)")
     #if !DEBUG
-    #expect(perRun < .milliseconds(60))
+    #expect(total / runs < .milliseconds(100))
     #endif
   }
 }
