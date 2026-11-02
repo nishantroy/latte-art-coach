@@ -16,12 +16,13 @@ import Testing
       let afterCup = ContinuousClock.now
       let surface = CupSurface(lab: lab, ellipse: cup.ellipse)
       let foam = FoamSegmenter.segment(surface)
-      _ = PatternAxis.find(surface: surface, mask: foam.mask)
+      let axis = try #require(PatternAxis.find(surface: surface, mask: foam.mask))
+      _ = TulipScore(TulipAnalyzer.measure(surface: surface, foam: foam, axis: axis))
       let end = ContinuousClock.now
       cupTime += afterCup - start
       total += end - start
     }
-    print("decode + cup: \(cupTime / runs), through axis: \(total / runs)")
+    print("decode + cup: \(cupTime / runs), through score: \(total / runs)")
     #if !DEBUG
     #expect(total / runs < .milliseconds(100))
     #endif
