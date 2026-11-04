@@ -32,6 +32,8 @@ UDID="$(xcrun simctl list devices available | grep -F "    $SIM_NAME (" | head -
 # Boot up front: letting xcodebuild cold-boot the simulator can fail to launch the runner.
 xcrun simctl boot "$UDID" 2>/dev/null || true
 xcrun simctl bootstatus "$UDID" -b >/dev/null
+# The flow test picks the newest library photo; make that fixture pour 3.
+xcrun simctl addmedia "$UDID" Packages/LatteCore/Tests/LatteCoreTests/Fixtures/pours/pour-03.jpg
 echo "== UI tests on $SIM_NAME"
 set +e
 xcodebuild test \
@@ -42,6 +44,9 @@ xcodebuild test \
   -resultBundlePath "$OUT/result-$(date +%Y%m%d-%H%M%S).xcresult" > "$LOG" 2>&1
 STATUS=$?
 set -e
-grep -E "Test Case|error:|\*\* TEST" "$LOG" || tail -20 "$LOG"
+grep -E "Test Case|error:|ANALYSIS|\*\* TEST" "$LOG" || tail -20 "$LOG"
+R="$(ls -td "$OUT"/result-*.xcresult | head -1)"
+rm -rf "$OUT/screenshots" && xcrun xcresulttool export attachments --path "$R" --output-path "$OUT/screenshots" >/dev/null 2>&1 || true
 echo "Full log: $LOG"
+echo "Screenshots: $OUT/screenshots"
 exit $STATUS

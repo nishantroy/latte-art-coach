@@ -7,8 +7,11 @@ The app is being rebuilt from scratch in Swift. See [PLAN.md](./PLAN.md). It nee
 ```bash
 scripts/test.sh                 # LatteCore unit tests, then UI tests on the iPhone 17 simulator
 SKIP_UI=1 scripts/test.sh       # LatteCore unit tests only
+scripts/install-device.sh       # optimized build, installed and launched on a connected iPhone
 xcodegen generate && open LatteArtCoach.xcodeproj
 ```
+
+Installing on a phone needs it paired with this Mac, with Developer Mode on. Signing uses the team in `project.yml`.
 
 - `LatteArtCoach/` is the SwiftUI app. Its Xcode project is generated from `project.yml`.
 - `Packages/LatteCore/` is the analysis package and has no UI dependencies.

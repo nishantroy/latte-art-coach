@@ -7,7 +7,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: RUQVKZ77U5
+    CODE_SIGN_STYLE: Automatic
 packages:
   LatteCore:
     path: Packages/LatteCore
@@ -24,6 +25,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Latte Coach
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSCameraUsageDescription: "Take a photo of your latte art to score it. Photos are analyzed on this iPhone and never uploaded."
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "0.1.0"

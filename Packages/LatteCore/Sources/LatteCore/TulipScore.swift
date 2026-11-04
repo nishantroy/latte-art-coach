@@ -11,11 +11,12 @@ public struct TulipScore: Sendable, Equatable {
     public var weight: Double {
       switch self {
       case .centering: 0.20
-      case .symmetry: 0.20
-      case .contrast: 0.25
+      case .symmetry: 0.15
+      case .contrast: 0.20
       case .proportion: 0.15
       case .texture: 0.10
-      case .stackDefinition: 0.10
+      // Distinct, rounded stacks are what make a tulip a tulip.
+      case .stackDefinition: 0.20
       }
     }
   }

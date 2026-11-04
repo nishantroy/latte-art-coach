@@ -1,0 +1,31 @@
+import SwiftUI
+import UIKit
+
+/// The system camera, returning JPEG data (or nil if cancelled).
+struct CameraPicker: UIViewControllerRepresentable {
+  static var isAvailable: Bool { UIImagePickerController.isSourceTypeAvailable(.camera) }
+
+  let onFinish: (Data?) -> Void
+
+  func makeUIViewController(context: Context) -> UIImagePickerController {
+    let picker = UIImagePickerController()
+    picker.sourceType = .camera
+    picker.delegate = context.coordinator
+    return picker
+  }
+
+  func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+
+  func makeCoordinator() -> Coordinator { Coordinator(onFinish: onFinish) }
+
+  final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    let onFinish: (Data?) -> Void
+    init(onFinish: @escaping (Data?) -> Void) { self.onFinish = onFinish }
+
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+      onFinish((info[.originalImage] as? UIImage)?.jpegData(compressionQuality: 0.9))
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { onFinish(nil) }
+  }
+}
