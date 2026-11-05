@@ -45,7 +45,9 @@ public struct PourAnalysis: Sendable {
     do { cup = try CupDetector.detect(lab) } catch { throw .noCoffeeFound }
     let surface = CupSurface(lab: lab, ellipse: cup.ellipse)
     let foam = FoamSegmenter.segment(surface)
-    guard foam.coverage > 0.03, let axis = PatternAxis.find(surface: surface, mask: foam.mask) else {
+    guard foam.coverage > 0.03, FoamSegmenter.foamStandsOut(surface, mask: foam.mask),
+      let axis = PatternAxis.find(surface: surface, mask: foam.mask)
+    else {
       throw .noPatternFound
     }
     let metrics = TulipAnalyzer.measure(surface: surface, foam: foam, axis: axis)

@@ -30,3 +30,49 @@ import Testing
     #expect(throws: PourAnalysis.Failure.unreadableImage) { try PourAnalysis.analyze(imageData: Data("nope".utf8)) }
   }
 }
+
+@Suite struct NotLatteArtTests {
+  /// A sunset over water, cropped from an app screenshot (with the app's old
+  /// overlay baked in). The orange sky band used to be taken for a cup and scored.
+  @Test func rejectsASunset() throws {
+    let url = try #require(Bundle.module.url(forResource: "sunset", withExtension: "jpg", subdirectory: "Fixtures/not-latte"))
+    #expect(throws: PourAnalysis.Failure.noCoffeeFound) { try PourAnalysis.analyze(imageData: Data(contentsOf: url)) }
+  }
+
+  @Test func rejectsALongOrangeBand() {
+    // Gray sky over an orange horizon band with a lighter streak: crema-colored
+    // with a "hole", but far too elongated to be a cup.
+    let w = 300, h = 200
+    var pixels = [UInt8](repeating: 0, count: w * h * 4)
+    for y in 0..<h {
+      for x in 0..<w {
+        let i = (y * w + x) * 4
+        let rgb: (UInt8, UInt8, UInt8) =
+          (90..<120).contains(y) && (40..<260).contains(x)
+            ? ((100..<106).contains(y) && (100..<200).contains(x) ? (235, 235, 230) : (230, 140, 60))
+            : (120, 130, 140)
+        pixels[i] = rgb.0; pixels[i + 1] = rgb.1; pixels[i + 2] = rgb.2; pixels[i + 3] = 255
+      }
+    }
+    #expect(throws: CupDetector.Failure.noCoffeeFound) { try CupDetector.detect(LabImage(RGBAImage(width: w, height: h, pixels: pixels))) }
+  }
+
+  @Test func rejectsACupWithoutLighterFoam() throws {
+    // A crema disc whose "pattern" is a slightly paler crema: Otsu splits it,
+    // but nothing is white enough to be milk.
+    let n = 200
+    var pixels = [UInt8](repeating: 230, count: n * n * 4)
+    for y in 0..<n {
+      for x in 0..<n {
+        let i = (y * n + x) * 4
+        let r = hypot(Double(x - 100), Double(y - 100))
+        guard r < 80 else { continue }
+        let paler = abs(x - 100) < 20 && abs(y - 100) < 40
+        let rgb: (UInt8, UInt8, UInt8) = paler ? (175, 120, 75) : (160, 100, 55)
+        pixels[i] = rgb.0; pixels[i + 1] = rgb.1; pixels[i + 2] = rgb.2
+      }
+    }
+    let image = RGBAImage(width: n, height: n, pixels: pixels)
+    #expect(throws: PourAnalysis.Failure.noPatternFound) { try PourAnalysis.analyze(image: image) }
+  }
+}

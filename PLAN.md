@@ -50,6 +50,7 @@ You take or pick a photo of a tulip you poured. Within about half a second the a
 - The axis is the line of best mirror symmetry. Its direction comes from the crema lines between stacks, which form chevrons pointing at the stem.
 - The score is a weighted mean of fixed ramps on measured metrics (`TulipScore.swift`). On the fixtures it gives 3: 84, 5: 84, 6: 82, 2: 74, 4: 65, 1: 64. Decision (2026-11-04): this is a tulip coach, so pour 4's thin, rosetta-like layers are penalized via stack definition (20% weight), and its top tip is "Push, stop, push".
 - Silhouette symmetry hardly separates these six pours. It's weighted but shouldn't be trusted to rank on its own until there are more examples.
+- Non-latte photos (2026-11-05: a sunset was scored 46) are rejected by plausibility gates rather than scored: the cup candidate must be roundish (minor/major ≥ 0.5) and solid (≥ 0.85 of its ellipse), and the foam must be at least 10 L lighter than the crema. Negative fixtures live in `Fixtures/not-latte/`.
 - The foam cleanup step (morphological opening) erases the thin pull-through stem. The stem metric in 2c has to measure it before cleanup or from the raw whiteness.
 
 ## Notes

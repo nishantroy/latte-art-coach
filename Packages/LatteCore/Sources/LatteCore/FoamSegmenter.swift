@@ -39,6 +39,20 @@ public enum FoamSegmenter {
     return Result(mask: mask, threshold: threshold, coverage: Double(foam) / Double(max(1, insideCount)))
   }
 
+  /// Otsu always splits the surface in two, even when there is no milk. Real
+  /// foam is clearly lighter than the crema around it (26–32 L brighter in
+  /// the fixtures; a weak, blended pour still clears 10), so a split without
+  /// that difference is not latte art.
+  public static func foamStandsOut(_ surface: CupSurface, mask: [UInt8], minLightness: Float = 10) -> Bool {
+    var foam: [Float] = [], crema: [Float] = []
+    for i in 0..<(surface.size * surface.size) where surface.inside[i] == 1 {
+      if mask[i] == 1 { foam.append(surface.l[i]) } else { crema.append(surface.l[i]) }
+    }
+    guard !foam.isEmpty, !crema.isEmpty else { return false }
+    func median(_ v: [Float]) -> Float { v.sorted()[v.count / 2] }
+    return median(foam) - median(crema) >= minLightness
+  }
+
   /// Otsu's threshold over a 256-bin histogram of the value range.
   static func otsu(_ values: [Float]) -> Float {
     guard let lo = values.min(), let hi = values.max(), hi > lo else { return values.first ?? 0 }

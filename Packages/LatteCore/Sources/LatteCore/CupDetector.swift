@@ -19,6 +19,12 @@ public enum CupDetector {
 
   public enum Failure: Error, Equatable { case noCoffeeFound }
 
+  /// Semi-minor / semi-major. Real cups measure 0.92–0.98; 0.5 allows a
+  /// photo taken about 60° off vertical.
+  static let minAspectRatio = 0.5
+  /// Filled region / fitted ellipse area. Real cups measure 1.0.
+  static let minSolidity = 0.85
+
   public static func detect(_ lab: LabImage) throws -> Result {
     let w = lab.width, h = lab.height, count = w * h
     var crema = [UInt8](repeating: 0, count: count)
@@ -33,6 +39,10 @@ public enum CupDetector {
       let ellipseArea = Double.pi * fit.ellipse.semiMajor * fit.ellipse.semiMinor
       // A filled ellipse covers its moment-fitted ellipse almost exactly.
       let solidity = min(1, fit.count / ellipseArea)
+      // A cup seen from above is round, or a mildly squashed ellipse at an
+      // angle. Long bands (a sunset, a wooden shelf) and ragged shapes are not
+      // coffee surfaces, so they are rejected rather than merely scored down.
+      guard fit.ellipse.semiMinor / fit.ellipse.semiMajor >= minAspectRatio, solidity >= minSolidity else { continue }
       // Foam and glare punch holes in a real surface; a plain brown object has none.
       let holes = 1 - Double(component.size) / fit.count
       let pattern = holes > 0.03 ? 1.0 : 0.3
