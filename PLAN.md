@@ -35,7 +35,7 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 | 5 | iOS 27 image observations | Xcode 27, on-device | |
 | 6 | Camera capture inside the app | On-device | Basic system camera done in step 3 |
 | 3b | Heart and rosetta scoring, pattern picker, re-score as another pattern | Synthetic heart/tulip/rosetta each score best as themselves; UI test re-scores as rosetta | Done; needs real heart and rosetta photos to calibrate |
-| 7 | Remove the Expo web MVP from the repo | Clean tree; `scripts/test.sh` | |
+| 7 | Remove the Expo web MVP from the repo | Clean tree; `scripts/test.sh` | Done |
 
 ## Later (tracked, not scheduled)
 
@@ -65,5 +65,4 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 
 - Debug builds of LatteCore are unoptimized, and analysis takes about 2.5 s in the Simulator. Use Release for real timing: `scripts/install-device.sh` builds Release, and the Mac release timing test covers about 35 ms.
 
-- The Expo web MVP (`app/`, `src/`, `package.json`) remains until step 7. It's a reference only. The Swift analysis is a fresh design, and the old scoring formula doesn't carry over.
 - In a git worktree, `scripts/test.sh` puts all build output under `/Users/nishantroy/code/.build-cache/latte-art-coach/<worktree>/`, as the repository-wide `AGENTS.md` requires. In the main checkout it uses `build/`.
