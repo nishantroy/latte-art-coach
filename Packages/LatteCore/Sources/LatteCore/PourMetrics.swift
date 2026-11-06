@@ -2,7 +2,7 @@ import Foundation
 
 /// Raw measurements of a pour, for any pattern, all scale-free (fractions of the cup
 /// radius or of the pattern) so photos of any size compare directly.
-public struct PourMetrics: Sendable, Equatable {
+public struct PourMetrics: Sendable, Equatable, Codable {
   /// Distance from the pattern's center to the cup's center, / cup radius.
   public var centerOffset: Double
   /// Mirror overlap (intersection over union) of the pattern's silhouette.
@@ -116,9 +116,14 @@ public enum PourMeasurer {
         if solid[i - 1] == 0 || solid[i + 1] == 0 || solid[i - n] == 0 || solid[i + n] == 0 { outline.append(f) }
       }
     }
-    guard tMax - tMin > 8, let widest = rows.max(by: { ($0.value.hi - $0.value.lo) < ($1.value.hi - $1.value.lo) }) else { return 1 }
-    let sMid = (widest.value.lo + widest.value.hi) / 2
-    let tWide = Double(widest.key)
+    // The lobes start at the widest row. Flat-sided shapes have several rows
+    // tied for widest; take the one nearest the point. (Picking among ties in
+    // dictionary order made the result vary from run to run.)
+    guard tMax - tMin > 8, let maxWidth = rows.values.map({ $0.hi - $0.lo }).max() else { return 1 }
+    let widestKey = rows.filter { $0.value.hi - $0.value.lo == maxWidth }.keys.min()!
+    let widest = rows[widestKey]!
+    let sMid = (widest.lo + widest.hi) / 2
+    let tWide = Double(widestKey)
 
     func circleError(_ pts: [(t: Double, s: Double)]) -> Double {
       guard pts.count >= 8 else { return 1 }
