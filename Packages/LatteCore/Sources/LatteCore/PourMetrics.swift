@@ -64,15 +64,74 @@ public enum PourMeasurer {
     return (lo...hi).map { t in rows[t].map { $0.hi - $0.lo + 1 } ?? 0 }
   }
 
-  /// The axis of a heart: the line from its notch to its point.
+  /// The axis of a heart: the line from its point (stem) to its notch (tip).
   ///
-  /// A heart is a round blob, so the plain mirror-overlap search can settle
-  /// on a diagonal that fits almost as well, especially when one lobe is
-  /// bigger. Along the true axis the heart is lopsided end to end: wide at
-  /// the lobes and narrowing to a point where the pull-through exits. So each
-  /// candidate line is scored on mirror overlap plus that end-to-end
-  /// difference, and the narrow end becomes the stem.
+  /// A heart is a round blob, so a plain mirror-overlap search can settle on
+  /// a diagonal that fits almost as well, especially when one lobe is bigger.
+  /// Instead the axis comes from two landmarks: the notch between the lobes
+  /// is the deepest dent in the outline, and the point is the part of the
+  /// heart farthest from the notch. The line is then fine-tuned for mirror
+  /// overlap. Hearts without a visible notch fall back to a search scored on
+  /// mirror overlap plus a wide-lobes, narrow-point profile.
   public static func heartAxis(mask: [UInt8], size n: Int) -> PatternAxis? {
+    if let axis = notchAxis(mask: mask, size: n) { return axis }
+    return profileAxis(mask: mask, size: n)
+  }
+
+  static func notchAxis(mask: [UInt8], size n: Int) -> PatternAxis? {
+    // The heart itself: the largest foam region, holes filled. The raw mask
+    // is used rather than the silhouette, whose closing would fill the notch.
+    guard let heart = CupDetector.components(mask, width: n, height: n, minSize: 50).max(by: { $0.size < $1.size }) else { return nil }
+    let solid = CupDetector.fillHoles(heart.mask, width: n, height: n)
+    var points: [(x: Double, y: Double)] = []
+    for y in 0..<n { for x in 0..<n where solid[y * n + x] == 1 { points.append((Double(x) + 0.5, Double(y) + 0.5)) } }
+    let cx = points.reduce(0) { $0 + $1.x } / Double(points.count)
+    let cy = points.reduce(0) { $0 + $1.y } / Double(points.count)
+    let hull = ConvexHull.mask(points: points, size: n, shrink: 0)
+    var dents = [UInt8](repeating: 0, count: n * n)
+    for i in 0..<(n * n) where hull[i] == 1 && solid[i] == 0 { dents[i] = 1 }
+    guard let notch = CupDetector.components(dents, width: n, height: n, minSize: max(4, points.count / 200))
+      .max(by: { $0.size < $1.size }) else { return nil }
+    // The bottom of the notch is its pixel nearest the heart's center.
+    var notchPoint = (x: 0.0, y: 0.0), nearest = Double.infinity
+    for y in 0..<n {
+      for x in 0..<n where notch.mask[y * n + x] == 1 {
+        let d = hypot(Double(x) + 0.5 - cx, Double(y) + 0.5 - cy)
+        if d < nearest { nearest = d; notchPoint = (Double(x) + 0.5, Double(y) + 0.5) }
+      }
+    }
+    guard let tipPoint = points.max(by: {
+      hypot($0.x - notchPoint.x, $0.y - notchPoint.y) < hypot($1.x - notchPoint.x, $1.y - notchPoint.y)
+    }) else { return nil }
+    let base = atan2(notchPoint.y - tipPoint.y, notchPoint.x - tipPoint.x)
+    let mx = (notchPoint.x + tipPoint.x) / 2, my = (notchPoint.y + tipPoint.y) / 2
+
+    // Fine-tune: best mirror overlap within a few degrees and pixels.
+    let sil = silhouette(mask, size: n)
+    var silPoints: [(x: Double, y: Double)] = []
+    for y in 0..<n { for x in 0..<n where sil[y * n + x] == 1 { silPoints.append((Double(x) + 0.5, Double(y) + 0.5)) } }
+    var best = (iou: -1.0, theta: base, ox: mx, oy: my)
+    for dAngle in stride(from: -8.0, through: 8.0, by: 1) {
+      let theta = base + dAngle * .pi / 180
+      let dx = cos(theta), dy = sin(theta)
+      for offset in stride(from: -6.0, through: 6.0, by: 2) {
+        let ox = mx - dy * offset, oy = my + dx * offset
+        var hits = 0
+        for p in silPoints {
+          let rx = p.x - ox, ry = p.y - oy
+          let t = rx * dx + ry * dy, s = -rx * dy + ry * dx
+          let ix = Int(ox + t * dx + s * dy), iy = Int(oy + t * dy - s * dx)
+          if ix >= 0, iy >= 0, ix < n, iy < n, sil[iy * n + ix] == 1 { hits += 1 }
+        }
+        let iou = Double(hits) / Double(2 * silPoints.count - hits)
+        if iou > best.iou { best = (iou, theta, ox, oy) }
+      }
+    }
+    return PatternAxis(originX: best.ox, originY: best.oy, directionX: cos(best.theta), directionY: sin(best.theta),
+                       mirrorOverlap: best.iou, directionConfidence: 1)
+  }
+
+  static func profileAxis(mask: [UInt8], size n: Int) -> PatternAxis? {
     let sil = silhouette(mask, size: n)
     var points: [(x: Double, y: Double)] = []
     for y in 0..<n { for x in 0..<n where sil[y * n + x] == 1 { points.append((Double(x) + 0.5, Double(y) + 0.5)) } }
