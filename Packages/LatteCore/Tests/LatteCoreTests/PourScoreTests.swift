@@ -9,7 +9,7 @@ import Testing
     let surface = CupSurface(lab: lab, ellipse: cup.ellipse)
     let foam = FoamSegmenter.segment(surface)
     var axis = try #require(PatternAxis.find(surface: surface, mask: foam.mask))
-    if pattern == .heart { axis = PourMeasurer.orientByTaper(axis, mask: foam.mask, size: surface.size) }
+    if pattern == .heart { axis = try #require(PourMeasurer.heartAxis(mask: foam.mask, size: surface.size)) }
     return PourMeasurer.measure(surface: surface, foam: foam, axis: axis)
   }
 

@@ -54,7 +54,7 @@ public struct PourAnalysis: Sendable {
     else {
       throw .noPatternFound
     }
-    if pattern == .heart { axis = PourMeasurer.orientByTaper(axis, mask: foam.mask, size: surface.size) }
+    if pattern == .heart, let heart = PourMeasurer.heartAxis(mask: foam.mask, size: surface.size) { axis = heart }
     let metrics = PourMeasurer.measure(surface: surface, foam: foam, axis: axis)
     let score = PourScore(metrics, pattern: pattern)
     let extent = PourMeasurer.extent(mask: foam.mask, size: surface.size, axis: axis)

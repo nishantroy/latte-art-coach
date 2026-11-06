@@ -76,3 +76,26 @@ import Testing
     #expect(throws: PourAnalysis.Failure.noPatternFound) { try PourAnalysis.analyze(image: image, pattern: .tulip) }
   }
 }
+
+@Suite struct HeartPhotoTests {
+  /// A clean, solid heart that sits toward the top of the cup with a slightly
+  /// bigger left lobe (a small thumbnail, 176×234).
+  static let url = Bundle.module.url(forResource: "heart-01", withExtension: "png", subdirectory: "Fixtures/hearts")!
+
+  @Test func findsTheNotchToPointAxis() throws {
+    let result = try PourAnalysis.analyze(imageData: Data(contentsOf: Self.url), pattern: .heart)
+    // The point is at the bottom of the photo, the lobes at the top.
+    let angle = atan2(result.tip.y - result.stem.y, result.tip.x - result.stem.x) * 180 / .pi
+    #expect(angleDifference(angle, -90) < 15, "axis \(angle)")
+    #expect(result.resembles == .heart)
+  }
+
+  @Test func scoresBestAsAHeartAndIsToldToCenterIt() throws {
+    let data = try Data(contentsOf: Self.url)
+    let scores = try Pattern.allCases.map { try PourAnalysis.analyze(imageData: data, pattern: $0).score.overall }
+    #expect(scores[0] > scores[1] && scores[0] > scores[2], "\(scores)")
+    let heart = try PourAnalysis.analyze(imageData: data, pattern: .heart)
+    #expect(heart.tips.first?.component == .centering)
+    #expect(heart.score.components[.contrast]! > 0.9 && heart.score.components[.definition]! > 0.9)
+  }
+}

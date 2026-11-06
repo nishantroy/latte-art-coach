@@ -64,19 +64,56 @@ public enum PourMeasurer {
     return (lo...hi).map { t in rows[t].map { $0.hi - $0.lo + 1 } ?? 0 }
   }
 
-  /// A heart has no stacks to read its direction from, but it narrows to a
-  /// point where the pull-through exits. Orients the axis so the narrower
-  /// end is the stem.
-  public static func orientByTaper(_ axis: PatternAxis, mask: [UInt8], size n: Int) -> PatternAxis {
-    let profile = widthProfile(silhouette(mask, size: n), size: n, axis: axis)
-    guard profile.count >= 10 else { return axis }
-    let k = max(1, profile.count / 5)
-    let start = profile.prefix(k).reduce(0, +), end = profile.suffix(k).reduce(0, +)
-    guard end < start else { return axis }
-    var flipped = axis
-    flipped.directionX = -axis.directionX
-    flipped.directionY = -axis.directionY
-    return flipped
+  /// The axis of a heart: the line from its notch to its point.
+  ///
+  /// A heart is a round blob, so the plain mirror-overlap search can settle
+  /// on a diagonal that fits almost as well, especially when one lobe is
+  /// bigger. Along the true axis the heart is lopsided end to end: wide at
+  /// the lobes and narrowing to a point where the pull-through exits. So each
+  /// candidate line is scored on mirror overlap plus that end-to-end
+  /// difference, and the narrow end becomes the stem.
+  public static func heartAxis(mask: [UInt8], size n: Int) -> PatternAxis? {
+    let sil = silhouette(mask, size: n)
+    var points: [(x: Double, y: Double)] = []
+    for y in 0..<n { for x in 0..<n where sil[y * n + x] == 1 { points.append((Double(x) + 0.5, Double(y) + 0.5)) } }
+    guard points.count > 50 else { return nil }
+    let mx = points.reduce(0) { $0 + $1.x } / Double(points.count)
+    let my = points.reduce(0) { $0 + $1.y } / Double(points.count)
+
+    func candidate(theta: Double, offset: Double) -> (score: Double, axis: PatternAxis) {
+      let dx = cos(theta), dy = sin(theta)
+      let ox = mx - dy * offset, oy = my + dx * offset
+      var hits = 0
+      for p in points {
+        let rx = p.x - ox, ry = p.y - oy
+        let t = rx * dx + ry * dy, s = -rx * dy + ry * dx
+        let ix = Int(ox + t * dx + s * dy), iy = Int(oy + t * dy - s * dx)
+        if ix >= 0, iy >= 0, ix < n, iy < n, sil[iy * n + ix] == 1 { hits += 1 }
+      }
+      let iou = Double(hits) / Double(2 * points.count - hits)
+      var axis = PatternAxis(originX: ox, originY: oy, directionX: dx, directionY: dy, mirrorOverlap: iou, directionConfidence: 0)
+      let profile = widthProfile(sil, size: n, axis: axis)
+      let k = max(1, profile.count / 5)
+      let start = profile.prefix(k).reduce(0, +), end = profile.suffix(k).reduce(0, +)
+      let asymmetry = max(start, end) > 0 ? 1 - min(start, end) / max(start, end) : 0
+      axis.directionConfidence = asymmetry
+      if end < start { axis.directionX = -dx; axis.directionY = -dy }
+      return (iou + 0.5 * asymmetry, axis)
+    }
+
+    var best = candidate(theta: 0, offset: 0)
+    for step in stride(from: 3.0, to: 180, by: 3) {
+      let c = candidate(theta: step * .pi / 180, offset: 0)
+      if c.score > best.score { best = c }
+    }
+    let base = atan2(best.axis.directionY, best.axis.directionX)
+    for dAngle in stride(from: -3.0, through: 3.0, by: 1) {
+      for offset in stride(from: -8.0, through: 8.0, by: 2) {
+        let c = candidate(theta: base + dAngle * .pi / 180, offset: offset)
+        if c.score > best.score { best = c }
+      }
+    }
+    return best.axis
   }
 
   public static func measure(surface: CupSurface, foam: FoamSegmenter.Result, axis: PatternAxis) -> PourMetrics {

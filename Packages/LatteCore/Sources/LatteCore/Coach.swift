@@ -38,10 +38,13 @@ public enum Coach {
     let name = pattern.noun
     switch component {
     case .centering:
+      // Described relative to the pattern, not the cup: which side of the
+      // cup is "near" depends on how the photo was held.
+      let (top, stem) = pattern == .heart ? ("rounded top", "point") : ("top", "stem")
       let detail = offsetAlongAxis > 0.05
-        ? "The pattern sits toward the far side of the cup. Start pouring the pattern a little closer to you so the finished \(name) lands in the middle."
+        ? "The \(name) sits off-center toward its \(top). Start the pattern a little further toward where the \(stem) ends up, so the finished \(name) lands in the middle."
         : offsetAlongAxis < -0.05
-          ? "The pattern sits toward your side of the cup. Start the pattern nearer the center, and let it travel forward a bit more."
+          ? "The \(name) sits off-center toward its \(stem). Start the pattern a little further toward where the \(top) ends up, so the finished \(name) lands in the middle."
           : "The pattern drifts to one side. Keep the spout over the cup's center line from start to the pull-through."
       return CoachingTip(title: "Center the \(name)", detail: detail, component: component)
     case .symmetry:
