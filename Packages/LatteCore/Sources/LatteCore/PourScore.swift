@@ -14,15 +14,15 @@ public struct PourScore: Sendable, Equatable {
     public func weight(for pattern: Pattern) -> Double {
       switch (pattern, self) {
       case (_, .centering): pattern == .rosetta ? 0.15 : 0.20
-      // A heart is judged mostly on its shape: symmetry and a clean outline.
-      case (.heart, .symmetry): 0.25
+      // A heart is judged mostly on its shape: a clean outline and symmetry.
+      case (.heart, .symmetry): 0.20
       case (.tulip, .symmetry): 0.15
       case (.rosetta, .symmetry): 0.20
-      case (_, .contrast): pattern == .rosetta ? 0.15 : 0.20
+      case (_, .contrast): pattern == .tulip ? 0.20 : 0.15
       case (.heart, .proportion): 0.10
       case (_, .proportion): 0.15
       case (_, .texture): 0.10
-      case (.heart, .definition): 0.15
+      case (.heart, .definition): 0.25
       case (.tulip, .definition): 0.20
       case (.rosetta, .definition): 0.25
       }
@@ -56,10 +56,14 @@ public struct PourScore: Sendable, Equatable {
       let tooShort = ramp(m.length, from: 0.45, to: 0.30)
       let tooNarrow = ramp(m.width / max(m.length, 0.01), from: 0.80, to: 0.60)
       c[.proportion] = max(0, 1 - tooLong - tooShort - tooNarrow)
-      // One solid blob (no crema lines inside) that closes to a point. Thin
-      // crema lines barely dent the fill, so separate stacks also count.
+      // Two round lobes, a solid blob (no crema lines inside), and a clean
+      // point. Thin crema lines barely dent the fill, so separate stacks
+      // also count. Lobe ranges: clean drawn hearts ~0.01, the user's
+      // flat-topped heart-01 0.038, a shield shape ~0.10.
       let solid = m.stackCount <= 1 ? 1.0 : m.stackCount == 2 ? 0.6 : 0.3
-      c[.definition] = solid * (0.5 * ramp(m.fill, from: 0.75, to: 0.92) + 0.5 * ramp(m.tipTaper, from: 0.70, to: 0.35))
+      c[.definition] = solid * (0.15 * ramp(m.fill, from: 0.75, to: 0.92)
+        + 0.25 * ramp(m.tipTaper, from: 0.70, to: 0.35)
+        + 0.60 * ramp(m.lobeRoundness, from: 0.07, to: 0.015))
     case .tulip:
       // About 60–78% of the diameter lengthwise and at least 45% across;
       // overlong, narrow patterns mean the pour drifted.

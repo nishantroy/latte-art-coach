@@ -13,7 +13,7 @@ public struct CoachingTip: Sendable, Equatable, Identifiable {
 /// which problems matter most.
 public enum Coach {
   /// Up to `limit` tips for the components that cost the most points.
-  public static func tips(metrics m: PourMetrics, score: PourScore, offsetAlongAxis: Double, limit: Int = 2) -> [CoachingTip] {
+  public static func tips(metrics m: PourMetrics, score: PourScore, offsetAlongAxis: Double, limit: Int = 3) -> [CoachingTip] {
     let pattern = score.pattern
     let losses = PourScore.Component.allCases
       .map { ($0, (1 - score.components[$0]!) * $0.weight(for: pattern)) }
@@ -105,6 +105,12 @@ public enum Coach {
         return CoachingTip(
           title: "One solid blob",
           detail: "There are crema lines inside the heart. Keep the spout low and in one spot with a steady flow, without wiggling, so the foam grows as one round blob.",
+          component: .definition)
+      }
+      if m.lobeRoundness > 0.03 {
+        return CoachingTip(
+          title: "Rounder lobes",
+          detail: "The top of the heart is flat and the sides run straight, so it reads more like a shield than two round lobes. Keep the spout low and still in one spot so the foam spreads out evenly, and don't drift forward while it grows. Swirl the milk until it's glossy, since stiff foam won't round out. Then start the pull-through right at the back edge of the blob to split it into two lobes.",
           component: .definition)
       }
       return CoachingTip(

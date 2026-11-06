@@ -46,6 +46,8 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 
 - A heart is a round blob, so the plain mirror-overlap axis goes diagonal on real hearts (heart-01, 2026-11-05). Hearts take their axis from landmarks instead: the notch (the deepest dent in the outline) and the point (the part farthest from it), fine-tuned for mirror overlap. Hearts with no visible notch fall back to mirror overlap plus a wide-lobes, narrow-point profile.
 - Thumbnails hide bubbles: heart-01 scored texture 76 as a 176×234 thumbnail and 3 at full size, which shows the bubbles. Fixtures should be full-size photos.
+- Heart-01's curves are poorly defined (flat top, straight sides), but heart shape scored 100. Heart shape now includes lobe roundness, from a circle fit to each lobe's upper outline: clean drawn hearts ~0.01, heart-01 0.038, a flat-topped shield ~0.10. Heart shape weight went from 15% to 25%. A template match against the classic heart curve was tried first and rejected, because it ranked a shield above a clean two-circle heart. Notch depth was tried and dropped as unreliable.
+- Up to three tips are shown, so the shape tip isn't crowded out by centering and milk texture.
 
 ## Tulip analysis notes
 

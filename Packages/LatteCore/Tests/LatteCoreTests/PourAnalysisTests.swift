@@ -8,7 +8,7 @@ import Testing
     let data = try Data(contentsOf: Fixtures.pourURL(number))
     let result = try PourAnalysis.analyze(imageData: data, pattern: .tulip)
     #expect(result.imageWidth == 512 || result.imageHeight == 512)
-    #expect(!result.tips.isEmpty && result.tips.count <= 2)
+    #expect(!result.tips.isEmpty && result.tips.count <= 3)
     // The axis runs stem → tip, so the tip is "up" for pours 2–6.
     if number != 1 { #expect(result.tip.y < result.stem.y) }
     let tinted = stride(from: 3, to: result.foamOverlay.pixels.count, by: 4).filter { result.foamOverlay.pixels[$0] > 0 }.count
@@ -95,7 +95,12 @@ import Testing
     let scores = try Pattern.allCases.map { try PourAnalysis.analyze(imageData: data, pattern: $0).score.overall }
     #expect(scores[0] > scores[1] && scores[0] > scores[2], "\(scores)")
     let heart = try PourAnalysis.analyze(imageData: data, pattern: .heart)
-    #expect(heart.tips.map(\.component) == [.centering, .texture])
-    #expect(heart.score.components[.contrast]! > 0.9 && heart.score.components[.definition]! > 0.9)
+    #expect(heart.tips.map(\.component) == [.centering, .texture, .definition])
+    #expect(heart.tips.last?.title == "Rounder lobes")
+    #expect(heart.score.components[.contrast]! > 0.9)
+    // The curves are poorly defined: the top is flat and the
+    // sides straight. Lobe roundness should land well short of a clean heart.
+    #expect((0.025...0.06).contains(heart.metrics.lobeRoundness), "lobes \(heart.metrics.lobeRoundness)")
+    #expect(heart.score.components[.definition]! < 0.85)
   }
 }

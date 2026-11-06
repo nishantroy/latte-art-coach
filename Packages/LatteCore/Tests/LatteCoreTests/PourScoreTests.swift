@@ -64,7 +64,7 @@ import Testing
   func perfectMetricsScore100(_ pattern: Pattern) {
     var ideal = PourMetrics(centerOffset: 0.02, symmetry: 0.95, detailSymmetry: 0.9, length: 0.7, width: 0.55,
                             coverage: 0.3, contrast: 40, edgeSharpness: 1, stackCount: 4, stackThickness: 0.3,
-                            stemLength: 0.1, fill: 0.95, tipTaper: 0.3, surfaceRoughness: 0.002)
+                            stemLength: 0.1, fill: 0.95, tipTaper: 0.3, lobeRoundness: 0.01, surfaceRoughness: 0.002)
     switch pattern {
     case .heart: ideal.stackCount = 1; ideal.length = 0.6; ideal.width = 0.6
     case .tulip: break
@@ -128,5 +128,38 @@ extension SyntheticPour {
       let band = v - 0.6 * abs(u)
       return (band + 10).truncatingRemainder(dividingBy: 0.09) < 0.05
     }
+  }
+}
+
+@Suite struct HeartShapeTests {
+  static func lobes(_ inside: @escaping (Double, Double) -> Bool) throws -> Double {
+    let n = 320
+    var pixels = [UInt8](repeating: 0, count: n * n * 4)
+    let c = Double(n) / 2, radius = Double(n) * 0.4
+    for y in 0..<n {
+      for x in 0..<n {
+        let u = (Double(x) + 0.5 - c) / radius, v = (c - Double(y) - 0.5) / radius
+        var rgb: (UInt8, UInt8, UInt8) = (225, 222, 218)
+        if hypot(u, v) < 1 { rgb = inside(u, v) ? (246, 242, 234) : (185, 118, 58) }
+        let o = (y * n + x) * 4
+        pixels[o] = rgb.0; pixels[o + 1] = rgb.1; pixels[o + 2] = rgb.2; pixels[o + 3] = 255
+      }
+    }
+    return try PourAnalysis.analyze(image: RGBAImage(width: n, height: n, pixels: pixels), pattern: .heart).metrics.lobeRoundness
+  }
+
+  @Test func roundLobesBeatAFlatToppedShield() throws {
+    let twoCircles = try Self.lobes { u, v in
+      if hypot(u - 0.14, v - 0.12) < 0.16 || hypot(u + 0.14, v - 0.12) < 0.16 { return true }
+      return v < 0.12 && v > -0.38 && abs(u) < 0.29 * (v + 0.38) / 0.5
+    }
+    // Flat top, straight sides converging to a point, a slit for a notch.
+    let shield = try Self.lobes { u, v in
+      guard v < 0.3, v > -0.4 else { return false }
+      if v > 0.22 && abs(u) < 0.04 { return false }
+      return abs(u) < 0.3 * min(1, (v + 0.4) / 0.35)
+    }
+    #expect(twoCircles < 0.02, "two circles \(twoCircles)")
+    #expect(shield > 0.07, "shield \(shield)")
   }
 }

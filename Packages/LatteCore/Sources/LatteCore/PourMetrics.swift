@@ -33,6 +33,11 @@ public struct PourMetrics: Sendable, Equatable {
   /// Silhouette width over the 15% of the pattern nearest the stem, / its
   /// widest point. A heart that closes to a clean point is low (~0.3).
   public var tipTaper: Double
+  /// How far each lobe's outline strays from a circle, / the circle's
+  /// radius. Round lobes are low; a flat top or squared corners are high.
+  /// Only meaningful for hearts. Clean drawn hearts measure ~0.01, a
+  /// flat-topped shield ~0.10.
+  public var lobeRoundness: Double
   /// Fraction of crema pixels that differ sharply from their neighborhood
   /// (bubbles and coarse microfoam).
   public var surfaceRoughness: Double
@@ -78,11 +83,78 @@ public enum PourMeasurer {
     return profileAxis(mask: mask, size: n)
   }
 
-  static func notchAxis(mask: [UInt8], size n: Int) -> PatternAxis? {
-    // The heart itself: the largest foam region, holes filled. The raw mask
-    // is used rather than the silhouette, whose closing would fill the notch.
+  /// The heart itself: the largest foam region, holes filled. The raw mask
+  /// is used rather than the silhouette, whose closing would fill the notch.
+  static func solidHeart(mask: [UInt8], size n: Int) -> [UInt8]? {
     guard let heart = CupDetector.components(mask, width: n, height: n, minSize: 50).max(by: { $0.size < $1.size }) else { return nil }
-    let solid = CupDetector.fillHoles(heart.mask, width: n, height: n)
+    return CupDetector.fillHoles(heart.mask, width: n, height: n)
+  }
+
+  /// See `PourMetrics.lobeRoundness`.
+  ///
+  /// Each lobe's outline, from the heart's widest row up to the top
+  /// (including its side of the notch), gets a least-squares circle fit; the
+  /// mean distance of the outline from that circle, / its radius, is low for
+  /// round lobes and high for flat tops and corners.
+  static func lobeRoundness(mask: [UInt8], size n: Int, axis: PatternAxis) -> Double {
+    guard let solid = solidHeart(mask: mask, size: n) else { return 1 }
+    let dx = axis.directionX, dy = axis.directionY
+    func frame(_ x: Double, _ y: Double) -> (t: Double, s: Double) {
+      let rx = x - axis.originX, ry = y - axis.originY
+      return (rx * dx + ry * dy, -rx * dy + ry * dx)
+    }
+    var rows: [Int: (lo: Double, hi: Double)] = [:]
+    var tMin = Double.infinity, tMax = -Double.infinity
+    var outline: [(t: Double, s: Double)] = []
+    for y in 1..<(n - 1) {
+      for x in 1..<(n - 1) where solid[y * n + x] == 1 {
+        let i = y * n + x
+        let f = frame(Double(x) + 0.5, Double(y) + 0.5)
+        tMin = min(tMin, f.t); tMax = max(tMax, f.t)
+        let r = rows[Int(f.t)] ?? (f.s, f.s)
+        rows[Int(f.t)] = (min(r.lo, f.s), max(r.hi, f.s))
+        if solid[i - 1] == 0 || solid[i + 1] == 0 || solid[i - n] == 0 || solid[i + n] == 0 { outline.append(f) }
+      }
+    }
+    guard tMax - tMin > 8, let widest = rows.max(by: { ($0.value.hi - $0.value.lo) < ($1.value.hi - $1.value.lo) }) else { return 1 }
+    let sMid = (widest.value.lo + widest.value.hi) / 2
+    let tWide = Double(widest.key)
+
+    func circleError(_ pts: [(t: Double, s: Double)]) -> Double {
+      guard pts.count >= 8 else { return 1 }
+      // Kåsa fit: minimize Σ(x² + y² + Dx + Ey + F)².
+      var sx = 0.0, sy = 0.0, sxx = 0.0, syy = 0.0, sxy = 0.0, sz = 0.0, sxz = 0.0, syz = 0.0
+      let m = Double(pts.count)
+      for p in pts {
+        let x = p.s, y = p.t, z = x * x + y * y
+        sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; sz += z; sxz += x * z; syz += y * z
+      }
+      // Normal equations [sxx sxy sx; sxy syy sy; sx sy m]·[D E F] = −[sxz syz sz].
+      let a = [[sxx, sxy, sx], [sxy, syy, sy], [sx, sy, m]], b = [-sxz, -syz, -sz]
+      func det(_ q: [[Double]]) -> Double {
+        q[0][0] * (q[1][1] * q[2][2] - q[1][2] * q[2][1]) - q[0][1] * (q[1][0] * q[2][2] - q[1][2] * q[2][0])
+          + q[0][2] * (q[1][0] * q[2][1] - q[1][1] * q[2][0])
+      }
+      let d = det(a)
+      guard abs(d) > 1e-9 else { return 1 }
+      var sol = [0.0, 0.0, 0.0]
+      for k in 0..<3 {
+        var q = a
+        for r in 0..<3 { q[r][k] = b[r] }
+        sol[k] = det(q) / d
+      }
+      let cx = -sol[0] / 2, cy = -sol[1] / 2
+      let radius = (cx * cx + cy * cy - sol[2]).squareRoot()
+      guard radius.isFinite, radius > 0 else { return 1 }
+      let mean = pts.reduce(0) { $0 + abs(hypot($1.s - cx, $1.t - cy) - radius) } / m
+      return mean / radius
+    }
+    let upper = outline.filter { $0.t >= tWide }
+    return (circleError(upper.filter { $0.s < sMid }) + circleError(upper.filter { $0.s > sMid })) / 2
+  }
+
+  static func notchAxis(mask: [UInt8], size n: Int) -> PatternAxis? {
+    guard let solid = solidHeart(mask: mask, size: n) else { return nil }
     var points: [(x: Double, y: Double)] = []
     for y in 0..<n { for x in 0..<n where solid[y * n + x] == 1 { points.append((Double(x) + 0.5, Double(y) + 0.5)) } }
     let cx = points.reduce(0) { $0 + $1.x } / Double(points.count)
@@ -343,6 +415,7 @@ public enum PourMeasurer {
       stemLength: stem / radius,
       fill: silhouetteArea > 0 ? min(1, Double(foamArea) / Double(silhouetteArea)) : 0,
       tipTaper: tipTaper,
+      lobeRoundness: lobeRoundness(mask: mask, size: n, axis: axis),
       surfaceRoughness: cremaCount > 0 ? Double(rough) / Double(cremaCount) : 0
     )
   }
