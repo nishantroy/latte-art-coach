@@ -7,6 +7,7 @@ final class AnalyzeFlowUITests: XCTestCase {
   func testScoresAPhotoFromTheLibrary() throws {
     continueAfterFailure = false
     let app = XCUIApplication()
+    app.launchArguments = ["-uitest"]  // empty, in-memory history
     app.launch()
     let choose = app.buttons["Choose a photo"]
     XCTAssertTrue(choose.waitForExistence(timeout: 15))
@@ -47,8 +48,30 @@ final class AnalyzeFlowUITests: XCTestCase {
     XCTAssertTrue(score.exists)
     print("AS ROSETTA: \(score.label)")
     capture("2b-rescored-rosetta")
-    app.swipeUp()
-    capture("3-result-scrolled")
+
+    // Rate it; the rating is saved with the pour.
+    let seven = app.buttons["rating-7"]
+    for _ in 0..<4 where !seven.isHittable { app.swipeUp() }
+    seven.tap()
+    let selected = expectation(for: NSPredicate(format: "selected == true"), evaluatedWith: seven)
+    XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 3), .completed, "Rating didn't show as selected")
+    capture("3-rated")
+
+    // The pour shows up in history with its rating.
+    let again = app.buttons["Score another pour"]
+    for _ in 0..<4 where !again.isHittable { app.swipeUp() }
+    again.tap()
+    app.buttons["history"].tap()
+    XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
+    let row = app.descendants(matching: .any).matching(identifier: "pour-row").firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5), "No pour in history")
+    XCTAssertTrue(row.label.contains("You: 7/10"), "Row: \(row.label)")
+    capture("4-history")
+    row.tap()
+    let opened = app.staticTexts["overall-score"].waitForExistence(timeout: 20)
+    if !opened { capture("5-detail-missing"); print("DETAIL TREE:\n\(app.debugDescription)") }
+    XCTAssertTrue(opened, "Saved pour didn't open")
+    capture("5-history-detail")
   }
 
   private func capture(_ name: String) {

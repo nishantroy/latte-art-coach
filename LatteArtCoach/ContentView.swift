@@ -1,9 +1,11 @@
 import LatteCore
 import PhotosUI
+import SwiftData
 import SwiftUI
 
 /// Pick or take a photo → analyze → results.
 struct ContentView: View {
+  @Environment(\.modelContext) private var context
   @State private var model = CoachModel()
   @State private var pickerItem: PhotosPickerItem?
   @State private var showingCamera = false
@@ -17,9 +19,9 @@ struct ContentView: View {
           start
         case .analyzing:
           ProgressView("Analyzing your pour…")
-        case .result(let photo, let analysis):
+        case .result(let photo, let analysis, let pour):
           ResultView(
-            photo: photo, analysis: analysis,
+            photo: photo, analysis: analysis, pour: pour,
             onRescore: { newPattern in
               pattern = newPattern
               Task { await model.rescore(as: newPattern) }
@@ -31,7 +33,18 @@ struct ContentView: View {
       }
       .navigationTitle(resultTitle)
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        if case .idle = model.state {
+          NavigationLink {
+            HistoryView()
+          } label: {
+            Label("History", systemImage: "clock.arrow.circlepath")
+          }
+          .accessibilityIdentifier("history")
+        }
+      }
     }
+    .onAppear { model.context = context }
     .onChange(of: pickerItem) { _, item in
       guard let item else { return }
       pickerItem = nil
@@ -89,7 +102,7 @@ struct ContentView: View {
   }
 
   private var resultTitle: String {
-    if case .result(_, let analysis) = model.state { return "Your \(analysis.pattern.noun)" }
+    if case .result(_, let analysis, _) = model.state { return "Your \(analysis.pattern.noun)" }
     return ""
   }
 

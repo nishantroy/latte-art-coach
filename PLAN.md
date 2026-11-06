@@ -35,11 +35,12 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 | 5 | iOS 27 image observations | Xcode 27, on-device | |
 | 6 | Camera capture inside the app | On-device | Basic system camera done in step 3 |
 | 3b | Heart and rosetta scoring, pattern picker, re-score as another pattern | Synthetic heart/tulip/rosetta each score best as themselves; UI test re-scores as rosetta | Done; needs real heart and rosetta photos to calibrate |
+| 8 | Pour history: every scored pour saved (SwiftData, original photo kept), your 1–10 rating, progress chart and trends per pattern, re-score on analysis version bumps, export of photos + `pours.json` | `ProgressSummary` and export unit tests; UI test rates a pour and reopens it from history | Done |
+| 9 | AI coaching with Foundation Models, using the current pour plus history; rule-based tips as fallback | Prompt-building unit tests; on-device check | |
 | 7 | Remove the Expo web MVP from the repo | Clean tree; `scripts/test.sh` | Done |
 
 ## Later (tracked, not scheduled)
 
-- Pour history and progress over time, such as symmetry improving this week.
 - Real heart and rosetta fixture photos to calibrate their ranges (currently set from synthetic patterns and judgment), plus a heart-notch measurement.
 
 ## Heart analysis notes

@@ -36,6 +36,10 @@ public struct PourAnalysis: Sendable {
 
   public static let analysisDimension = 512
 
+  /// Bumped whenever measurement or scoring changes, so saved pours can be
+  /// re-scored with the current rules.
+  public static let version = 4
+
   public static func analyze(imageData: Data, pattern: Pattern) throws(Failure) -> PourAnalysis {
     let start = ContinuousClock.now
     let image: RGBAImage

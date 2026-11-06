@@ -4,8 +4,11 @@ import SwiftUI
 struct ResultView: View {
   let photo: UIImage
   let analysis: PourAnalysis
+  /// The saved pour, for the user's rating.
+  let pour: Pour?
   let onRescore: (Pattern) -> Void
-  let onAgain: () -> Void
+  /// Nil when showing a pour from history.
+  let onAgain: (() -> Void)?
   @State private var showOverlay = true
 
   var body: some View {
@@ -23,18 +26,23 @@ struct ResultView: View {
         PourPhotoView(photo: photo, analysis: analysis, showOverlay: showOverlay)
           .onTapGesture { showOverlay.toggle() }
           .accessibilityLabel("Photo of your pour, tap to toggle the overlay")
+        if let pour {
+          RatingView(rating: Binding(get: { pour.rating }, set: { pour.rating = $0; try? pour.modelContext?.save() }))
+        }
         tips
         breakdown
         Text("Analyzed on device in \(analysis.duration.formatted(.units(allowed: [.milliseconds])))")
           .font(.footnote)
           .foregroundStyle(.secondary)
           .accessibilityIdentifier("analysis-duration")
-        Button(action: onAgain) {
-          Label("Score another pour", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity)
+        if let onAgain {
+          Button(action: onAgain) {
+            Label("Score another pour", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity)
+          }
+          .buttonStyle(.borderedProminent)
+          .controlSize(.large)
+          .tint(.brown)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .tint(.brown)
       }
       .padding()
     }

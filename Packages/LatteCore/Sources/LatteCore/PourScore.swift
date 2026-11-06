@@ -5,7 +5,7 @@ import Foundation
 /// weighted mean whose weights depend on the pattern. Nothing here is learned
 /// or model-generated.
 public struct PourScore: Sendable, Equatable {
-  public enum Component: String, CaseIterable, Sendable {
+  public enum Component: String, CaseIterable, Sendable, Codable {
     /// `definition` is the pattern's signature: a solid heart with a clean
     /// point, thick separate tulip stacks, or many fine rosetta leaves.
     case centering, symmetry, contrast, proportion, texture, definition

@@ -1,6 +1,6 @@
 /// Latte art patterns the app can score. The user says which one they meant
 /// to pour; the score judges the pour against that pattern.
-public enum Pattern: String, CaseIterable, Sendable, Identifiable {
+public enum Pattern: String, CaseIterable, Sendable, Identifiable, Codable {
   case heart, tulip, rosetta
 
   public var id: String { rawValue }
