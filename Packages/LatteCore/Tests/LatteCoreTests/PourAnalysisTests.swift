@@ -6,7 +6,7 @@ import Testing
   @Test(arguments: Fixtures.pours)
   func analyzesFixturePhotosEndToEnd(_ number: Int) throws {
     let data = try Data(contentsOf: Fixtures.pourURL(number))
-    let result = try PourAnalysis.analyze(imageData: data)
+    let result = try PourAnalysis.analyze(imageData: data, pattern: .tulip)
     #expect(result.imageWidth == 512 || result.imageHeight == 512)
     #expect(!result.tips.isEmpty && result.tips.count <= 2)
     // The axis runs stem → tip, so the tip is "up" for pours 2–6.
@@ -16,18 +16,18 @@ import Testing
   }
 
   @Test func pour4IsToldToStopWiggling() throws {
-    let result = try PourAnalysis.analyze(imageData: Data(contentsOf: Fixtures.pourURL(4)))
-    #expect(result.tips.contains { $0.component == .stackDefinition })
+    let result = try PourAnalysis.analyze(imageData: Data(contentsOf: Fixtures.pourURL(4)), pattern: .tulip)
+    #expect(result.tips.contains { $0.component == .definition })
   }
 
   @Test func pour1IsToldAboutBubbles() throws {
-    let result = try PourAnalysis.analyze(imageData: Data(contentsOf: Fixtures.pourURL(1)))
+    let result = try PourAnalysis.analyze(imageData: Data(contentsOf: Fixtures.pourURL(1)), pattern: .tulip)
     print(result.tips.map(\.title))
     #expect(result.tips.contains { $0.component == .texture || $0.component == .contrast || $0.component == .proportion })
   }
 
   @Test func rejectsNonImages() {
-    #expect(throws: PourAnalysis.Failure.unreadableImage) { try PourAnalysis.analyze(imageData: Data("nope".utf8)) }
+    #expect(throws: PourAnalysis.Failure.unreadableImage) { try PourAnalysis.analyze(imageData: Data("nope".utf8), pattern: .tulip) }
   }
 }
 
@@ -36,7 +36,7 @@ import Testing
   /// overlay baked in). The orange sky band used to be taken for a cup and scored.
   @Test func rejectsASunset() throws {
     let url = try #require(Bundle.module.url(forResource: "sunset", withExtension: "jpg", subdirectory: "Fixtures/not-latte"))
-    #expect(throws: PourAnalysis.Failure.noCoffeeFound) { try PourAnalysis.analyze(imageData: Data(contentsOf: url)) }
+    #expect(throws: PourAnalysis.Failure.noCoffeeFound) { try PourAnalysis.analyze(imageData: Data(contentsOf: url), pattern: .tulip) }
   }
 
   @Test func rejectsALongOrangeBand() {
@@ -73,6 +73,6 @@ import Testing
       }
     }
     let image = RGBAImage(width: n, height: n, pixels: pixels)
-    #expect(throws: PourAnalysis.Failure.noPatternFound) { try PourAnalysis.analyze(image: image) }
+    #expect(throws: PourAnalysis.Failure.noPatternFound) { try PourAnalysis.analyze(image: image, pattern: .tulip) }
   }
 }

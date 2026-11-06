@@ -1,8 +1,8 @@
 import Foundation
 
-/// Raw measurements of a tulip pour, all scale-free (fractions of the cup
+/// Raw measurements of a pour, for any pattern, all scale-free (fractions of the cup
 /// radius or of the pattern) so photos of any size compare directly.
-public struct TulipMetrics: Sendable, Equatable {
+public struct PourMetrics: Sendable, Equatable {
   /// Distance from the pattern's center to the cup's center, / cup radius.
   public var centerOffset: Double
   /// Mirror overlap (intersection over union) of the pattern's silhouette.
@@ -27,12 +27,18 @@ public struct TulipMetrics: Sendable, Equatable {
   public var stackThickness: Double
   /// Length of the thin pull-through line beyond the base, / cup radius.
   public var stemLength: Double
+  /// Foam area / silhouette area. A heart is one solid blob (near 1); crema
+  /// lines between tulip stacks or rosetta leaves lower it.
+  public var fill: Double
+  /// Silhouette width over the 15% of the pattern nearest the stem, / its
+  /// widest point. A heart that closes to a clean point is low (~0.3).
+  public var tipTaper: Double
   /// Fraction of crema pixels that differ sharply from their neighborhood
   /// (bubbles and coarse microfoam).
   public var surfaceRoughness: Double
 }
 
-public enum TulipAnalyzer {
+public enum PourMeasurer {
   /// The pattern's outline: gaps between stacks closed and holes filled.
   static func silhouette(_ mask: [UInt8], size n: Int) -> [UInt8] {
     var m = mask
@@ -41,7 +47,39 @@ public enum TulipAnalyzer {
     return CupDetector.fillHoles(m, width: n, height: n)
   }
 
-  public static func measure(surface: CupSurface, foam: FoamSegmenter.Result, axis: PatternAxis) -> TulipMetrics {
+  /// Silhouette width along the axis, in 1-pixel steps from the stem end
+  /// (`t` increasing toward the tip).
+  static func widthProfile(_ silhouette: [UInt8], size n: Int, axis: PatternAxis) -> [Double] {
+    let dx = axis.directionX, dy = axis.directionY
+    var rows: [Int: (lo: Double, hi: Double)] = [:]
+    for y in 0..<n {
+      for x in 0..<n where silhouette[y * n + x] == 1 {
+        let rx = Double(x) + 0.5 - axis.originX, ry = Double(y) + 0.5 - axis.originY
+        let t = Int((rx * dx + ry * dy).rounded(.down)), s = -rx * dy + ry * dx
+        let r = rows[t] ?? (s, s)
+        rows[t] = (min(r.lo, s), max(r.hi, s))
+      }
+    }
+    guard let lo = rows.keys.min(), let hi = rows.keys.max() else { return [] }
+    return (lo...hi).map { t in rows[t].map { $0.hi - $0.lo + 1 } ?? 0 }
+  }
+
+  /// A heart has no stacks to read its direction from, but it narrows to a
+  /// point where the pull-through exits. Orients the axis so the narrower
+  /// end is the stem.
+  public static func orientByTaper(_ axis: PatternAxis, mask: [UInt8], size n: Int) -> PatternAxis {
+    let profile = widthProfile(silhouette(mask, size: n), size: n, axis: axis)
+    guard profile.count >= 10 else { return axis }
+    let k = max(1, profile.count / 5)
+    let start = profile.prefix(k).reduce(0, +), end = profile.suffix(k).reduce(0, +)
+    guard end < start else { return axis }
+    var flipped = axis
+    flipped.directionX = -axis.directionX
+    flipped.directionY = -axis.directionY
+    return flipped
+  }
+
+  public static func measure(surface: CupSurface, foam: FoamSegmenter.Result, axis: PatternAxis) -> PourMetrics {
     let n = surface.size
     let radius = Double(n) / 2
     let mask = foam.mask
@@ -121,6 +159,11 @@ public enum TulipAnalyzer {
 
     // Silhouette: close the gaps between stacks and fill holes.
     let silhouette = silhouette(mask, size: n)
+    let foamArea = mask.reduce(0) { $0 + Int($1) }
+    let silhouetteArea = silhouette.reduce(0) { $0 + Int($1) }
+    let profile = widthProfile(silhouette, size: n, axis: axis)
+    let tipBand = profile.prefix(max(1, Int(Double(profile.count) * 0.15)))
+    let tipTaper = (profile.max() ?? 0) > 0 ? tipBand.reduce(0, +) / Double(tipBand.count) / profile.max()! : 1
     /// Intersection over union of a mask and its mirror image across the axis:
     /// with A foam pixels of which H land on foam when mirrored, IoU = H / (2A − H).
     func mirrorIoU(_ m: [UInt8]) -> Double {
@@ -190,7 +233,7 @@ public enum TulipAnalyzer {
       }
     }
 
-    return TulipMetrics(
+    return PourMetrics(
       centerOffset: centerOffset,
       symmetry: bestMirrorIoU(silhouette),
       detailSymmetry: mirrorIoU(mask),
@@ -202,6 +245,8 @@ public enum TulipAnalyzer {
       stackCount: stackCount,
       stackThickness: stackThickness,
       stemLength: stem / radius,
+      fill: silhouetteArea > 0 ? min(1, Double(foamArea) / Double(silhouetteArea)) : 0,
+      tipTaper: tipTaper,
       surfaceRoughness: cremaCount > 0 ? Double(rough) / Double(cremaCount) : 0
     )
   }

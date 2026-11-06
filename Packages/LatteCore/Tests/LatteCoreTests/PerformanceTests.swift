@@ -17,7 +17,7 @@ import Testing
       let surface = CupSurface(lab: lab, ellipse: cup.ellipse)
       let foam = FoamSegmenter.segment(surface)
       let axis = try #require(PatternAxis.find(surface: surface, mask: foam.mask))
-      _ = TulipScore(TulipAnalyzer.measure(surface: surface, foam: foam, axis: axis))
+      _ = PourScore(PourMeasurer.measure(surface: surface, foam: foam, axis: axis), pattern: .tulip)
       let end = ContinuousClock.now
       cupTime += afterCup - start
       total += end - start

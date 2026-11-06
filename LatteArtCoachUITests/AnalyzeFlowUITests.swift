@@ -10,6 +10,8 @@ final class AnalyzeFlowUITests: XCTestCase {
     app.launch()
     let choose = app.buttons["Choose a photo"]
     XCTAssertTrue(choose.waitForExistence(timeout: 15))
+    // The chosen pattern persists between launches; score the fixture as a tulip.
+    app.buttons["Tulip"].tap()
     capture("1-start")
     // An early tap can land before the button responds; retry until the picker covers it.
     for _ in 1...3 {
@@ -37,6 +39,14 @@ final class AnalyzeFlowUITests: XCTestCase {
     let value = try XCTUnwrap(Int(score.label))
     XCTAssertTrue((70...95).contains(value), "Unexpected score \(value) for fixture pour 3")
     print("ANALYSIS: \(app.staticTexts["analysis-duration"].label)")
+    XCTAssertTrue(app.navigationBars["Your tulip"].exists)
+
+    // Re-score the same photo as a rosetta without picking it again.
+    app.buttons["Rosetta"].tap()
+    XCTAssertTrue(app.navigationBars["Your rosetta"].waitForExistence(timeout: 5), "Re-scoring didn't switch the pattern")
+    XCTAssertTrue(score.exists)
+    print("AS ROSETTA: \(score.label)")
+    capture("2b-rescored-rosetta")
     app.swipeUp()
     capture("3-result-scrolled")
   }

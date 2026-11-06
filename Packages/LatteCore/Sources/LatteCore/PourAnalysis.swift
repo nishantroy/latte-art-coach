@@ -19,8 +19,12 @@ public struct PourAnalysis: Sendable {
   /// Ends of the pattern's axis.
   public let stem: ImagePoint
   public let tip: ImagePoint
-  public let metrics: TulipMetrics
-  public let score: TulipScore
+  /// The pattern the user meant to pour, which the score judges against.
+  public let pattern: Pattern
+  /// The pattern the foam shape most resembles, when that's clear-cut.
+  public let resembles: Pattern?
+  public let metrics: PourMetrics
+  public let score: PourScore
   public let tips: [CoachingTip]
   public let duration: Duration
 
@@ -32,27 +36,28 @@ public struct PourAnalysis: Sendable {
 
   public static let analysisDimension = 512
 
-  public static func analyze(imageData: Data) throws(Failure) -> PourAnalysis {
+  public static func analyze(imageData: Data, pattern: Pattern) throws(Failure) -> PourAnalysis {
     let start = ContinuousClock.now
     let image: RGBAImage
     do { image = try RGBAImage.load(data: imageData, maxDimension: analysisDimension) } catch { throw .unreadableImage }
-    return try analyze(image: image, start: start)
+    return try analyze(image: image, pattern: pattern, start: start)
   }
 
-  public static func analyze(image: RGBAImage, start: ContinuousClock.Instant = .now) throws(Failure) -> PourAnalysis {
+  public static func analyze(image: RGBAImage, pattern: Pattern, start: ContinuousClock.Instant = .now) throws(Failure) -> PourAnalysis {
     let lab = LabImage(image)
     let cup: CupDetector.Result
     do { cup = try CupDetector.detect(lab) } catch { throw .noCoffeeFound }
     let surface = CupSurface(lab: lab, ellipse: cup.ellipse)
     let foam = FoamSegmenter.segment(surface)
     guard foam.coverage > 0.03, FoamSegmenter.foamStandsOut(surface, mask: foam.mask),
-      let axis = PatternAxis.find(surface: surface, mask: foam.mask)
+      var axis = PatternAxis.find(surface: surface, mask: foam.mask)
     else {
       throw .noPatternFound
     }
-    let metrics = TulipAnalyzer.measure(surface: surface, foam: foam, axis: axis)
-    let score = TulipScore(metrics)
-    let extent = TulipAnalyzer.extent(mask: foam.mask, size: surface.size, axis: axis)
+    if pattern == .heart { axis = PourMeasurer.orientByTaper(axis, mask: foam.mask, size: surface.size) }
+    let metrics = PourMeasurer.measure(surface: surface, foam: foam, axis: axis)
+    let score = PourScore(metrics, pattern: pattern)
+    let extent = PourMeasurer.extent(mask: foam.mask, size: surface.size, axis: axis)
     let stem = surface.imagePoint(gridX: extent.stem.x, gridY: extent.stem.y)
     let tip = surface.imagePoint(gridX: extent.tip.x, gridY: extent.tip.y)
     let tips = Coach.tips(metrics: metrics, score: score, offsetAlongAxis: extent.offsetAlongAxis)
@@ -60,6 +65,7 @@ public struct PourAnalysis: Sendable {
       imageWidth: image.width, imageHeight: image.height, cup: cup.ellipse,
       foamOverlay: foamOverlay(surface: surface, mask: foam.mask, width: image.width, height: image.height),
       stem: ImagePoint(x: stem.x, y: stem.y), tip: ImagePoint(x: tip.x, y: tip.y),
+      pattern: pattern, resembles: Pattern.resembling(metrics),
       metrics: metrics, score: score, tips: tips, duration: ContinuousClock.now - start
     )
   }
@@ -91,7 +97,7 @@ public struct PourAnalysis: Sendable {
   }
 }
 
-extension TulipAnalyzer {
+extension PourMeasurer {
   /// Ends of the pattern along its axis (grid coordinates) and how far the
   /// pattern's center sits from the cup center along the axis, / cup radius
   /// (positive = pushed toward the tip).

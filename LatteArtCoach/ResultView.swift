@@ -4,13 +4,22 @@ import SwiftUI
 struct ResultView: View {
   let photo: UIImage
   let analysis: PourAnalysis
+  let onRescore: (Pattern) -> Void
   let onAgain: () -> Void
   @State private var showOverlay = true
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
+        PatternPicker(selection: Binding(get: { analysis.pattern }, set: onRescore))
+          .accessibilityLabel("Scored as")
         scoreHeader
+        if let note = resemblanceNote {
+          Label(note, systemImage: "info.circle")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .accessibilityIdentifier("resemblance-note")
+        }
         PourPhotoView(photo: photo, analysis: analysis, showOverlay: showOverlay)
           .onTapGesture { showOverlay.toggle() }
           .accessibilityLabel("Photo of your pour, tap to toggle the overlay")
@@ -46,10 +55,17 @@ struct ResultView: View {
   private var verdict: String {
     switch analysis.score.overall {
     case 90...: "Excellent"
-    case 80..<90: "Good tulip"
+    case 80..<90: "Good \(analysis.pattern.noun)"
     case 65..<80: "Getting there"
     default: "Keep practicing"
     }
+  }
+
+  /// Shown when the foam clearly reads as a different pattern than the one
+  /// being scored, e.g. tulip stacks that came out as rosetta leaves.
+  private var resemblanceNote: String? {
+    guard let looks = analysis.resembles, looks != analysis.pattern else { return nil }
+    return "This reads more like a \(looks.noun). Tap \(looks.displayName) above to score it as one."
   }
 
   private var tips: some View {
@@ -70,10 +86,11 @@ struct ResultView: View {
   private var breakdown: some View {
     VStack(alignment: .leading, spacing: 8) {
       Text("Breakdown").font(.headline)
-      ForEach(TulipScore.Component.allCases, id: \.self) { component in
+      ForEach(PourScore.Component.allCases, id: \.self) { component in
+        let label = component.label(for: analysis.pattern)
         let value = analysis.score.components[component] ?? 0
         HStack {
-          Text(component.label).font(.subheadline).frame(width: 110, alignment: .leading)
+          Text(label).font(.subheadline).frame(width: 110, alignment: .leading)
           ProgressView(value: value).tint(value >= 0.7 ? .green : value >= 0.4 ? .orange : .red)
           Text("\(Int((value * 100).rounded()))").font(.subheadline.monospacedDigit()).frame(width: 32, alignment: .trailing)
         }
@@ -82,15 +99,20 @@ struct ResultView: View {
   }
 }
 
-extension TulipScore.Component {
-  var label: String {
+extension PourScore.Component {
+  func label(for pattern: Pattern) -> String {
     switch self {
     case .centering: "Centering"
     case .symmetry: "Symmetry"
     case .contrast: "Contrast"
     case .proportion: "Size"
     case .texture: "Milk texture"
-    case .stackDefinition: "Tulip stacks"
+    case .definition:
+      switch pattern {
+      case .heart: "Heart shape"
+      case .tulip: "Tulip stacks"
+      case .rosetta: "Leaves"
+      }
     }
   }
 }

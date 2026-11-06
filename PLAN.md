@@ -4,7 +4,7 @@ This file is the canonical plan. Scope or architecture changes must update it.
 
 ## Product
 
-You take or pick a photo of a tulip you poured. Within about half a second the app shows a score, an overlay showing what's off, and a couple of specific things to change on the next pour. Everything runs on the device.
+You say which pattern you poured (heart, tulip or rosetta), then take or pick a photo of it. Within about half a second the app shows a score, an overlay showing what's off, and a couple of specific things to change on the next pour. Everything runs on the device.
 
 ## Requirements
 
@@ -17,7 +17,7 @@ You take or pick a photo of a tulip you poured. Within about half a second the a
 
 - **`LatteArtCoach/`** is the SwiftUI app target. Its Xcode project is generated from `project.yml` by XcodeGen. The `.xcodeproj` isn't checked in.
 - **`Packages/LatteCore/`** is a Swift package with no UI dependencies. It holds image preparation, cup detection, foam segmentation, measurements, scoring and the rule-based tips. `swift test` runs it on the Mac in seconds.
-- **Pattern analyzers:** each pattern implements a shared analyzer protocol. The tulip is the first one. Heart and rosetta can be added later without touching the tulip code.
+- **Patterns:** one shared measurement pass (`PourMetrics`) feeds a per-pattern score (`PourScore`) with its own weights, size ranges and a `definition` component: a solid heart that closes to a point, thick separate tulip stacks, or many thin rosetta leaves. The user picks the intended pattern and can re-score a photo as another one. A conservative classifier (`Pattern.resembling`) points out when the foam clearly reads as a different pattern.
 - **Image math** runs on Accelerate (vDSP and vImage) and Core Image rather than per-pixel Swift loops where it matters.
 - **Coaching:** Foundation Models (`LanguageModelSession` with `@Generable` output) turns the metrics into specific tips. When Apple Intelligence isn't available, rule-based tips from LatteCore are used instead.
 - **Image observations (iOS 27, needs Xcode 27):** the model is also given the photo and adds qualitative notes, such as a smeared base. These are shown beside the score and never feed into it.
@@ -34,12 +34,13 @@ You take or pick a photo of a tulip you poured. Within about half a second the a
 | 4 | Foundation Models coaching from metrics, plus the rule-based fallback | Unit tests for the fallback; on-device check | |
 | 5 | iOS 27 image observations | Xcode 27, on-device | |
 | 6 | Camera capture inside the app | On-device | Basic system camera done in step 3 |
+| 3b | Heart and rosetta scoring, pattern picker, re-score as another pattern | Synthetic heart/tulip/rosetta each score best as themselves; UI test re-scores as rosetta | Done; needs real heart and rosetta photos to calibrate |
 | 7 | Remove the Expo web MVP from the repo | Clean tree; `scripts/test.sh` | |
 
 ## Later (tracked, not scheduled)
 
 - Pour history and progress over time, such as symmetry improving this week.
-- Heart and rosetta patterns.
+- Real heart and rosetta fixture photos to calibrate their ranges (currently set from synthetic patterns and judgment), plus a heart-notch measurement.
 
 ## Tulip analysis notes
 

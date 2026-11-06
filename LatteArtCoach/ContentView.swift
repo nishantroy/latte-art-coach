@@ -7,6 +7,7 @@ struct ContentView: View {
   @State private var model = CoachModel()
   @State private var pickerItem: PhotosPickerItem?
   @State private var showingCamera = false
+  @AppStorage("pattern") private var pattern: Pattern = .tulip
 
   var body: some View {
     NavigationStack {
@@ -17,12 +18,18 @@ struct ContentView: View {
         case .analyzing:
           ProgressView("Analyzing your pour…")
         case .result(let photo, let analysis):
-          ResultView(photo: photo, analysis: analysis, onAgain: { model.reset() })
+          ResultView(
+            photo: photo, analysis: analysis,
+            onRescore: { newPattern in
+              pattern = newPattern
+              Task { await model.rescore(as: newPattern) }
+            },
+            onAgain: { model.reset() })
         case .failed(let message):
           failure(message)
         }
       }
-      .navigationTitle(model.isShowingResult ? "Your tulip" : "")
+      .navigationTitle(resultTitle)
       .navigationBarTitleDisplayMode(.inline)
     }
     .onChange(of: pickerItem) { _, item in
@@ -33,13 +40,13 @@ struct ContentView: View {
           model.fail("Couldn't open that photo.")
           return
         }
-        await model.analyze(data)
+        await model.analyze(data, as: pattern)
       }
     }
     .fullScreenCover(isPresented: $showingCamera) {
       CameraPicker { data in
         showingCamera = false
-        if let data { Task { await model.analyze(data) } }
+        if let data { Task { await model.analyze(data, as: pattern) } }
       }
       .ignoresSafeArea()
     }
@@ -53,10 +60,14 @@ struct ContentView: View {
         .foregroundStyle(.brown)
       Text("Latte Art Coach")
         .font(.largeTitle.bold())
-      Text("Pour a \(Pattern.tulip.displayName.lowercased()), take a photo from above, and get a score with tips for your next pour.")
+      Text("Pour a heart, tulip or rosetta, take a photo from above, and get a score with tips for your next pour.")
         .multilineTextAlignment(.center)
         .foregroundStyle(.secondary)
       Spacer()
+      VStack(alignment: .leading, spacing: 8) {
+        Text("What did you pour?").font(.headline)
+        PatternPicker(selection: $pattern)
+      }
       VStack(spacing: 12) {
         if CameraPicker.isAvailable {
           Button {
@@ -75,6 +86,11 @@ struct ContentView: View {
       .tint(.brown)
     }
     .padding(24)
+  }
+
+  private var resultTitle: String {
+    if case .result(_, let analysis) = model.state { return "Your \(analysis.pattern.noun)" }
+    return ""
   }
 
   private func failure(_ message: String) -> some View {
