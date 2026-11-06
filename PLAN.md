@@ -42,6 +42,11 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 - Pour history and progress over time, such as symmetry improving this week.
 - Real heart and rosetta fixture photos to calibrate their ranges (currently set from synthetic patterns and judgment), plus a heart-notch measurement.
 
+## Heart analysis notes
+
+- A heart is a round blob, so the plain mirror-overlap axis goes diagonal on real hearts (heart-01, 2026-11-05). Hearts take their axis from landmarks instead: the notch (the deepest dent in the outline) and the point (the part farthest from it), fine-tuned for mirror overlap. Hearts with no visible notch fall back to mirror overlap plus a wide-lobes, narrow-point profile.
+- Thumbnails hide bubbles: heart-01 scored texture 76 as a 176×234 thumbnail and 3 at full size, which shows the bubbles. Fixtures should be full-size photos.
+
 ## Tulip analysis notes
 
 - The six fixture photos in `Packages/LatteCore/Tests/LatteCoreTests/Fixtures/pours/` were all meant as tulips. They came out with wing-shaped, blended stacks that look like rosettas. Telling those apart is a core coaching signal: distinct, rounded stacks mean clean pushes with the flow stopped between them, while thin, wavy layers mean the pitcher kept wiggling.
