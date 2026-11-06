@@ -57,6 +57,15 @@ final class AnalyzeFlowUITests: XCTestCase {
     XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 3), .completed, "Rating didn't show as selected")
     capture("3-rated")
 
+    // Coaching: from the on-device model when Apple Intelligence is on,
+    // otherwise the rule-based tips (the Simulator usually can't run the
+    // model; pour 3 scored as a rosetta gets "Thinner leaves").
+    app.swipeUp()
+    let coached = app.staticTexts["coach-focus"].exists || app.otherElements["coach-thinking"].exists
+      || app.staticTexts["Thinner leaves"].exists
+    capture("3b-coaching")
+    XCTAssertTrue(coached, "No coaching or fallback note shown")
+
     // The pour shows up in history with its rating.
     let again = app.buttons["Score another pour"]
     for _ in 0..<4 where !again.isHittable { app.swipeUp() }

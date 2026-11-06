@@ -10,12 +10,16 @@ struct ResultView: View {
   /// Nil when showing a pour from history.
   let onAgain: (() -> Void)?
   @State private var showOverlay = true
+  @State private var selectedPattern: Pattern?
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        PatternPicker(selection: Binding(get: { analysis.pattern }, set: onRescore))
+        PatternPicker(selection: Binding(get: { selectedPattern ?? analysis.pattern }, set: { selectedPattern = $0 }))
           .accessibilityLabel("Scored as")
+          .onChange(of: selectedPattern) { _, pattern in
+            if let pattern, pattern != analysis.pattern { onRescore(pattern) }
+          }
         scoreHeader
         if let note = resemblanceNote {
           Label(note, systemImage: "info.circle")
@@ -29,7 +33,7 @@ struct ResultView: View {
         if let pour {
           RatingView(rating: Binding(get: { pour.rating }, set: { pour.rating = $0; try? pour.modelContext?.save() }))
         }
-        tips
+        CoachingSection(analysis: analysis, pour: pour)
         breakdown
         Text("Analyzed on device in \(analysis.duration.formatted(.units(allowed: [.milliseconds])))")
           .font(.footnote)
@@ -74,21 +78,6 @@ struct ResultView: View {
   private var resemblanceNote: String? {
     guard let looks = analysis.resembles, looks != analysis.pattern else { return nil }
     return "This reads more like a \(looks.noun). Tap \(looks.displayName) above to score it as one."
-  }
-
-  private var tips: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Next pour").font(.headline)
-      ForEach(analysis.tips) { tip in
-        VStack(alignment: .leading, spacing: 4) {
-          Text(tip.title).font(.subheadline.bold())
-          Text(tip.detail).font(.subheadline).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.brown.opacity(0.1), in: .rect(cornerRadius: 12))
-      }
-    }
   }
 
   private var breakdown: some View {
