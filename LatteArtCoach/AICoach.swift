@@ -189,7 +189,7 @@ struct CoachingSection: View {
 
   /// Changes whenever the facts given to the model could change.
   private var taskKey: String {
-    "\(analysis.pattern.rawValue)-\(analysis.score.overall)-\(pour?.rating ?? 0)-\(String(describing: pour?.brew))"
+    "\(analysis.pattern.rawValue)-\(analysis.score.overall)-\(pour?.rating ?? 0)-\(String(describing: pour?.brew))-\(String(describing: pour?.taste))"
   }
 
   @ViewBuilder
@@ -253,12 +253,14 @@ struct CoachingSection: View {
   /// The facts for the model: this pour plus earlier pours of the same pattern.
   private func prompt() -> String {
     let pattern = analysis.pattern
-    let earlier = ((try? context.fetch(FetchDescriptor<Pour>())) ?? [])
+    let all = (try? context.fetch(FetchDescriptor<Pour>())) ?? []
+    let earlier = all
       .filter { $0.pattern == pattern && $0.persistentModelID != pour?.persistentModelID && $0.date < (pour?.date ?? .now) }
       .map(\.record)
+    let dialIn = pour.map { DialInCard.tips(for: $0, contrast: analysis.score.components[.contrast], among: all) } ?? []
     return CoachingBrief.prompt(
       pattern: pattern, score: analysis.score, tips: analysis.tips,
       history: ProgressSummary(records: earlier, pattern: pattern), rating: pour?.rating,
-      brew: pour?.brew, date: pour?.date ?? .now)
+      brew: pour?.brew, taste: pour?.taste, dialIn: dialIn, date: pour?.date ?? .now)
   }
 }

@@ -9,7 +9,7 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 ## Requirements
 
 - **Speed:** analysis takes under 300 ms on an iPhone 15 Pro. The score and overlay appear right away, and coaching text streams in afterwards, so it never holds up the score. While you frame the photo, the foam overlay updates live. Timing tests enforce these budgets.
-- **Deterministic score:** the score comes only from measured geometry. Language models write the coaching and observations but never produce or adjust the score.
+- **Deterministic score:** the score comes only from measured geometry. Taste ratings and dial-in advice sit beside it and never change it. Language models write the coaching and observations but never produce or adjust the score.
 - **Private:** photos and results stay on the device. There is no network call.
 - **Platform:** a native Swift app (SwiftUI) with no React Native, web or cross-platform layer. The deployment target is iOS 26. Features that need iOS 27 are gated with `#available`. The test device is an iPhone 15 Pro running iOS 27, which supports Apple Intelligence.
 
@@ -39,8 +39,8 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 | 9 | AI coaching with Foundation Models, using the current pour plus history; rule-based tips as fallback; follow-up questions | Prompt-building unit tests; UI test sees coaching or the fallback; on-device check pending | Built; needs an on-device check (Apple Intelligence is off on the dev Mac) |
 | 10 | Brew details on each pour (beans, dose, yield, shot time, grind, milk), started from the last pour; beans list; brew facts in coaching and export | `BrewDetails` and coaching brief unit tests; on-device check of the data upgrade | Done |
 | 11 | Bean library by scanning the bag label (on-device text recognition + model extraction; roast level guessed from tasting notes and marked as a guess) | Parser unit tests on sample label text; end-to-end recognition of a drawn label; on-device check with real bags pending | Built; needs real bag photos |
-| 12 | Dial-in coaching from shot numbers (ratio, time) and from your own pours' history | Rule unit tests | |
-| 13 | Taste notes and bean ratings over time; preference summary | | |
+| 12 | Dial-in coaching from shot numbers (ratio, time), freshness and taste against roast-level targets, plus the grind that worked best with the same beans; fed to the AI coach as facts | `DialInTests` | Built; needs an on-device check |
+| 13 | How each drink tasted (balance, 1–5 stars, flavors noticed); beans list and bean pages (edit, stats, chart, best grind); preferences across roasts, flavor styles, origins, processes and milk | `TastePreferencesTests` | Built; needs an on-device check |
 | 7 | Remove the Expo web MVP from the repo | Clean tree; `scripts/test.sh` | Done |
 
 ## Later (tracked, not scheduled)

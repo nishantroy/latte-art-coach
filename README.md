@@ -14,5 +14,5 @@ xcodegen generate && open LatteArtCoach.xcodeproj
 Installing on a phone needs it paired with this Mac, with Developer Mode on. Signing uses the team in `project.yml`.
 
 - `LatteArtCoach/` is the SwiftUI app. Its Xcode project is generated from `project.yml`.
-- `Packages/LatteCore/` is the analysis package (cup detection, foam segmentation, measurement, scoring, rule-based tips). It has no UI dependencies, and its tests run on the Mac with real and synthetic photos.
+- `Packages/LatteCore/` is the analysis package (cup detection, foam segmentation, measurement, scoring, rule-based tips, bag-label parsing, dial-in rules, taste preferences). It has no UI dependencies, and its tests run on the Mac with real and synthetic photos.
 - `LatteArtCoachUITests/` holds the Simulator UI tests.

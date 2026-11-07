@@ -30,6 +30,11 @@ final class Pour {
   /// while the facts are unchanged.
   var coachingData: Data?
   var coachingPrompt: String?
+  // How the drink tasted.
+  var tasteBalanceRaw: String?
+  /// 1–5.
+  var drinkRating: Int?
+  var tastedNotes: [String] = []
 
   init(photo: Data, analysis: PourAnalysis, date: Date = .now) {
     self.date = date
@@ -61,6 +66,15 @@ final class Pour {
                 doseGrams: doseGrams, yieldGrams: yieldGrams, shotSeconds: shotSeconds, milk: milk)
   }
 
+  var taste: DrinkTaste {
+    get { DrinkTaste(balance: tasteBalanceRaw.flatMap(DrinkTaste.Balance.init(rawValue:)), rating: drinkRating, notes: tastedNotes) }
+    set {
+      tasteBalanceRaw = newValue.balance?.rawValue
+      drinkRating = newValue.rating
+      tastedNotes = newValue.notes
+    }
+  }
+
   /// Starts this pour's brew details from another pour's: most mornings
   /// only the shot time changes.
   func copyBrew(from other: Pour) {
@@ -85,7 +99,7 @@ final class Pour {
       components: Dictionary(uniqueKeysWithValues: componentScores.compactMap { key, value in
         PourScore.Component(rawValue: key).map { ($0, value) }
       }),
-      rating: rating, brew: brew.isEmpty ? nil : brew)
+      rating: rating, brew: brew.isEmpty ? nil : brew, taste: taste.isEmpty ? nil : taste)
   }
 }
 

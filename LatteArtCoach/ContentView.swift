@@ -47,6 +47,12 @@ struct ContentView: View {
             }
             .accessibilityIdentifier("history")
           }
+          ToolbarItem(placement: .topBarLeading) {
+            NavigationLink(value: Route.beans) {
+              Label("Beans", systemImage: "bag")
+            }
+            .accessibilityIdentifier("beans")
+          }
         }
         // Every screen past the start one can go straight home; the pour is
         // already saved, so nothing is lost.
@@ -56,6 +62,8 @@ struct ContentView: View {
         switch route {
         case .history: HistoryView()
         case .pour(let pour): PourDetailView(pour: pour)
+        case .beans: BeansView()
+        case .bean(let bean): BeanDetailView(bean: bean)
         }
       }
     }

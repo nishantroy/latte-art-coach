@@ -123,9 +123,17 @@ struct BrewEditor: View {
   }
 }
 
-/// A new bag of beans: scan the label to fill it in, then check and fix.
+/// A bag of beans: scan the label to fill it in, then check and fix. Also
+/// edits a saved bag.
 struct NewBeanForm: View {
+  /// The saved bag being edited; nil for a new one.
+  var editing: Bean?
   let onSave: (Bean) -> Void
+
+  init(editing: Bean? = nil, onSave: @escaping (Bean) -> Void) {
+    self.editing = editing
+    self.onSave = onSave
+  }
   @Environment(\.dismiss) private var dismiss
   @State private var name = ""
   @State private var roaster = ""
@@ -139,6 +147,8 @@ struct NewBeanForm: View {
   @State private var roastLevelIsGuess = false
   @State private var notes = ""
   @State private var labelText: String?
+  @State private var myNotes = ""
+  @State private var loaded = false
   // Scanning
   @State private var pickerItem: PhotosPickerItem?
   @State private var showingCamera = false
@@ -193,8 +203,11 @@ struct NewBeanForm: View {
           TextField("Altitude", text: $altitude)
           TextField("Tasting notes, comma separated", text: $notes, axis: .vertical)
         }
+        Section("Your notes") {
+          TextField("Anything to remember about this bag", text: $myNotes, axis: .vertical)
+        }
       }
-      .navigationTitle("New beans")
+      .navigationTitle(editing == nil ? "New beans" : "Edit beans")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -214,7 +227,26 @@ struct NewBeanForm: View {
         }
         .ignoresSafeArea()
       }
+      .onAppear(perform: load)
     }
+  }
+
+  private func load() {
+    guard !loaded, let bean = editing else { return }
+    loaded = true
+    name = bean.name
+    roaster = bean.roaster ?? ""
+    knowsRoastDate = bean.roastDate != nil
+    roastDate = bean.roastDate ?? .now
+    origin = bean.origin ?? ""
+    process = bean.process ?? ""
+    variety = bean.variety ?? ""
+    altitude = bean.altitude ?? ""
+    roastLevel = bean.roastLevel
+    roastLevelIsGuess = bean.roastLevelIsGuess
+    notes = bean.tastingNotes.joined(separator: ", ")
+    labelText = bean.labelText
+    myNotes = bean.notes ?? ""
   }
 
   private func scan(_ data: Data) async {
@@ -249,7 +281,11 @@ struct NewBeanForm: View {
       let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
       return t.isEmpty ? nil : t
     }
-    let bean = Bean(name: clean(name) ?? "Beans", roaster: clean(roaster), roastDate: knowsRoastDate ? roastDate : nil)
+    let bean = editing ?? Bean(name: "Beans")
+    bean.name = clean(name) ?? "Beans"
+    bean.roaster = clean(roaster)
+    bean.roastDate = knowsRoastDate ? roastDate : nil
+    bean.notes = clean(myNotes)
     bean.origin = clean(origin)
     bean.process = clean(process)
     bean.variety = clean(variety)

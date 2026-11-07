@@ -4,6 +4,8 @@ import SwiftUI
 enum Route: Hashable {
   case history
   case pour(Pour)
+  case beans
+  case bean(Bean)
 }
 
 /// Goes back to the start screen from anywhere.

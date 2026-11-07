@@ -127,7 +127,7 @@ public enum DialIn {
 
   /// The grind setting that has worked best with these beans, when the
   /// user's pours show a clear difference and this pour isn't using it.
-  static func bestSettings(for brew: BrewDetails, in history: [PourRecord]) -> DialInTip? {
+  public static func bestSettings(for brew: BrewDetails, in history: [PourRecord]) -> DialInTip? {
     guard let name = brew.beanName else { return nil }
     let roaster = brew.roaster
     let same: [PourRecord] = history.filter { record in
