@@ -22,7 +22,7 @@ public enum CoachingBrief {
   ///     excluding this one.
   public static func prompt(
     pattern: Pattern, score: PourScore, tips: [CoachingTip], history: ProgressSummary?, rating: Int?,
-    brew: BrewDetails? = nil, date: Date = .now
+    brew: BrewDetails? = nil, taste: DrinkTaste? = nil, dialIn: [DialInTip] = [], date: Date = .now
   ) -> String {
     var lines: [String] = []
     lines.append("Pattern the barista poured: \(pattern.noun).")
@@ -30,6 +30,12 @@ public enum CoachingBrief {
     if let rating { lines.append("The barista rated this pour \(rating) out of 10 themselves.") }
 
     if let brew, !brew.isEmpty { lines += brewLines(brew, date: date) }
+    if let taste, !taste.isEmpty { lines += tasteLines(taste) }
+    if !dialIn.isEmpty {
+      lines.append("")
+      lines.append("Espresso dial-in advice from fixed rules (mention the most important one only if it affects the art):")
+      for tip in dialIn { lines.append("- \(tip.title): \(tip.detail)") }
+    }
 
     lines.append("")
     lines.append("Parts of the score (100 is perfect), the ones costing the most points first:")
@@ -94,6 +100,14 @@ public enum CoachingBrief {
       lines.append("- Beans roasted \(days) day\(days == 1 ? "" : "s") before this pour.")
     }
     return lines.count > 2 ? lines : []
+  }
+
+  static func tasteLines(_ taste: DrinkTaste) -> [String] {
+    var parts: [String] = []
+    if let balance = taste.balance { parts.append("the espresso tasted \(balance.displayName.lowercased())") }
+    if let rating = taste.rating { parts.append("they rated the drink \(rating) out of 5") }
+    if !taste.notes.isEmpty { parts.append("they tasted \(taste.notes.joined(separator: ", "))") }
+    return ["- Taste: " + parts.joined(separator: "; ") + "."]
   }
 
   static func label(_ component: PourScore.Component, _ pattern: Pattern) -> String {

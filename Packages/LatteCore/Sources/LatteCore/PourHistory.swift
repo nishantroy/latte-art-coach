@@ -12,15 +12,18 @@ public struct PourRecord: Sendable, Equatable, Codable {
   public var rating: Int?
   /// How the drink was made, if logged.
   public var brew: BrewDetails?
+  /// How the drink tasted, if logged.
+  public var taste: DrinkTaste?
 
   public init(date: Date, pattern: Pattern, score: Int, components: [PourScore.Component: Double], rating: Int?,
-              brew: BrewDetails? = nil) {
+              brew: BrewDetails? = nil, taste: DrinkTaste? = nil) {
     self.date = date
     self.pattern = pattern
     self.score = score
     self.components = components
     self.rating = rating
     self.brew = brew
+    self.taste = taste
   }
 }
 
@@ -92,6 +95,7 @@ public struct HistoryExport: Codable, Sendable {
     public var components: [String: Double]
     public var analysisVersion: Int
     public var brew: BrewDetails?
+    public var taste: DrinkTaste?
   }
 
   public var exportedAt: Date
@@ -103,7 +107,7 @@ public struct HistoryExport: Codable, Sendable {
       Entry(photo: p.photo, date: p.record.date, pattern: p.record.pattern, score: p.record.score,
             rating: p.record.rating,
             components: Dictionary(uniqueKeysWithValues: p.record.components.map { ($0.key.rawValue, $0.value) }),
-            analysisVersion: p.analysisVersion, brew: p.record.brew)
+            analysisVersion: p.analysisVersion, brew: p.record.brew, taste: p.record.taste)
     }
   }
 
