@@ -31,9 +31,9 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 | 2b | Foam segmentation inside the cup, glare rejection, pattern axis and direction | Fixture axes eye-checked; synthetic patterns at known angles; timing test | Done |
 | 2c | Tulip metrics and score: centering, symmetry, contrast, proportion, texture, stack definition | Clear-cut parts of the hand ranking (3 > 4 > 5 > 2 ≈ 6 > 1) asserted | Done |
 | 3 | App flow: take or pick a photo, automatic cup detection, results with overlay, score breakdown and rule-based tips | XCUITest in the Simulator; installed on the iPhone 15 Pro | Done, except manual cup adjustment |
-| 4 | Foundation Models coaching from metrics, plus the rule-based fallback | Unit tests for the fallback; on-device check | |
-| 5 | iOS 27 image observations | Xcode 27, on-device | |
-| 6 | Camera capture inside the app | On-device | Basic system camera done in step 3 |
+| 4 | Foundation Models coaching from metrics, plus the rule-based fallback | Unit tests for the fallback; on-device check | Done as step 9 |
+| 5 | iOS 27 image observations | Xcode 27, on-device | Blocked: needs the iOS 27 SDK (Xcode 27); this Mac has Xcode 26.6 |
+| 6 | Camera inside the app: live cup and foam outline on frames about five times a second, framing hints (closer, center, flatter), no score until rated | `FramingTests` (real pours ready, sunset no cup, small cup); on-device check | Built; needs an on-device check |
 | 3b | Heart and rosetta scoring, pattern picker, re-score as another pattern | Synthetic heart/tulip/rosetta each score best as themselves; UI test re-scores as rosetta | Done; needs real heart and rosetta photos to calibrate |
 | 8 | Pour history: every scored pour saved (SwiftData, original photo kept), your 1–10 rating, progress chart and trends per pattern, re-score on analysis version bumps, export of photos + `pours.json` | `ProgressSummary` and export unit tests; UI test rates a pour and reopens it from history | Done |
 | 9 | AI coaching with Foundation Models, using the current pour plus history; rule-based tips as fallback; follow-up questions | Prompt-building unit tests; UI test sees coaching or the fallback; on-device check pending | Built; needs an on-device check (Apple Intelligence is off on the dev Mac) |

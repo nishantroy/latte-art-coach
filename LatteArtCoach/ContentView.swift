@@ -84,11 +84,10 @@ struct ContentView: View {
       }
     }
     .fullScreenCover(isPresented: $showingCamera) {
-      CameraPicker { data in
+      LiveCameraView(pattern: pattern) { data in
         showingCamera = false
         if let data { Task { await model.analyze(data, as: pattern) } }
       }
-      .ignoresSafeArea()
     }
   }
 
@@ -120,7 +119,7 @@ struct ContentView: View {
         PatternPicker(selection: $pattern)
       }
       VStack(spacing: 12) {
-        if CameraPicker.isAvailable {
+        if LiveCamera.isAvailable {
           Button {
             showingCamera = true
           } label: {
