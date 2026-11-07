@@ -1,0 +1,110 @@
+import CoreGraphics
+import CoreText
+import Foundation
+import Testing
+@testable import LatteCore
+
+@Suite struct BeanLabelTests {
+  static var utc: Calendar {
+    var c = Calendar(identifier: .gregorian)
+    c.timeZone = TimeZone(identifier: "UTC")!
+    return c
+  }
+  static func day(_ y: Int, _ m: Int, _ d: Int) -> Date { utc.date(from: DateComponents(year: y, month: m, day: d))! }
+  static let today = day(2026, 11, 6)
+
+  static func parse(_ lines: [String]) -> BeanLabel {
+    BeanLabelParser.parse(lines.map { LabelLine($0) }, today: today, calendar: utc)
+  }
+
+  @Test func readsAWashedEthiopian() {
+    let label = Self.parse([
+      "ONYX COFFEE LAB", "Ethiopia Guji Hambela", "Washed · Heirloom", "1,900 - 2,200 MASL",
+      "Jasmine, Peach & Black Tea", "Roasted on 2026-10-28", "12 oz / 340 g",
+    ])
+    #expect(label.origin == "Ethiopia")
+    #expect(label.process == "Washed")
+    #expect(label.variety == "Heirloom")
+    #expect(label.altitude == "1,900–2,200 m")
+    #expect(label.roastDate == Self.day(2026, 10, 28))
+    #expect(label.tastingNotes == ["jasmine", "peach", "black tea"])
+    #expect(label.roastLevel == .light && label.roastLevelIsGuess)
+  }
+
+  @Test func readsAChocolateyBrazilWithAPrintedRoast() {
+    let label = Self.parse([
+      "Brazil Cerrado Mineiro", "Natural | Yellow Bourbon", "Notes: milk chocolate, hazelnut, brown sugar",
+      "Medium Roast", "Roast date", "Oct 30, 2026",
+    ])
+    #expect(label.origin == "Brazil")
+    #expect(label.process == "Natural")
+    #expect(label.variety == "Yellow Bourbon")
+    #expect(label.roastDate == Self.day(2026, 10, 30))
+    #expect(label.tastingNotes == ["milk chocolate", "hazelnut", "brown sugar"])
+    #expect(label.roastLevel == .medium && !label.roastLevelIsGuess, "printed roast wins over the guess")
+  }
+
+  @Test func guessesDarkFromHeavyNotes() {
+    let label = Self.parse(["Sumatra Wet Hulled", "Dark chocolate · molasses · cedar", "Roasted 11/02/2026"])
+    #expect(label.process == "Wet-hulled")
+    #expect(label.roastDate == Self.day(2026, 11, 2))
+    #expect(label.roastLevel == .dark && label.roastLevelIsGuess)
+  }
+
+  @Test func ignoresBestByAndFutureDates() {
+    let label = Self.parse(["Colombia Huila", "Honey process", "Best by 2027-05-01", "Caramel, red apple"])
+    #expect(label.roastDate == nil, "a best-by date months ahead isn't a roast date")
+    #expect(label.process == "Honey")
+    #expect(!label.tastingNotes.contains("honey"))
+  }
+
+  @Test func leavesUnknownsEmpty() {
+    let label = Self.parse(["House Blend", "Freshly roasted"])
+    #expect(label.origin == nil && label.process == nil && label.roastDate == nil && label.roastLevel == nil)
+    #expect(label.tastingNotes.isEmpty)
+  }
+
+  /// End to end with Apple's text recognition: draws a label, reads it back.
+  @Test func readsARenderedLabel() async throws {
+    let image = try #require(Self.render([
+      ("SEY COFFEE", 54), ("Kenya Nyeri Gatomboya", 40), ("Washed  ·  SL28, SL34", 30),
+      ("Blackcurrant, grapefruit, hibiscus", 30), ("Roasted on 2026-10-25", 30),
+    ]))
+    let lines = try await LabelReader.read(image)
+    print("OCR:", lines.map(\.text))
+    let label = BeanLabelParser.parse(lines, today: Self.today, calendar: Self.utc)
+    #expect(label.origin == "Kenya")
+    #expect(label.process == "Washed")
+    #expect(label.variety?.contains("SL28") == true)
+    #expect(label.roastDate == Self.day(2026, 10, 25))
+    #expect(label.tastingNotes.contains("grapefruit") && label.tastingNotes.contains("hibiscus"))
+    #expect(label.roastLevel == .light)
+    // Text height is a weak hint (descenders make lowercase lines taller), so
+    // only check the headline is one of the two big lines; the language
+    // model decides name vs roaster.
+    #expect(["SEY COFFEE", "Kenya Nyeri Gatomboya"].contains(label.headline ?? ""))
+  }
+
+  /// Black text on a cream card, one line per entry, at the given point size.
+  static func render(_ lines: [(String, CGFloat)]) -> CGImage? {
+    let width = 1400, height = 120 + lines.count * 90
+    guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                              space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+    ctx.setFillColor(CGColor(red: 0.96, green: 0.93, blue: 0.88, alpha: 1))
+    ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    var y = CGFloat(height - 90)
+    for (text, size) in lines {
+      let font = CTFontCreateWithName("Helvetica-Bold" as CFString, size, nil)
+      let attributed = NSAttributedString(string: text, attributes: [
+        NSAttributedString.Key(kCTFontAttributeName as String): font,
+        NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 0.1, alpha: 1),
+      ])
+      let line = CTLineCreateWithAttributedString(attributed)
+      ctx.textPosition = CGPoint(x: 60, y: y)
+      CTLineDraw(line, ctx)
+      y -= 90
+    }
+    return ctx.makeImage()
+  }
+}

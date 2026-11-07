@@ -17,7 +17,12 @@ fi
 mkdir -p "$CACHE"
 
 echo "== LatteCore unit tests"
-swift test -c release --package-path Packages/LatteCore --scratch-path "$CACHE/spm-LatteCore"
+SPM=(-c release --package-path Packages/LatteCore --scratch-path "$CACHE/spm-LatteCore")
+swift test "${SPM[@]}" --skip PerformanceTests
+# The timing test runs alone: tests run in parallel, and sharing the CPU
+# (with text recognition especially) makes timings meaningless.
+echo "== LatteCore timing"
+swift test "${SPM[@]}" --filter PerformanceTests
 
 if [ "${UI:-}" != 1 ]; then
   echo "== Skipping UI tests (set UI=1 to run them in the Simulator)"
