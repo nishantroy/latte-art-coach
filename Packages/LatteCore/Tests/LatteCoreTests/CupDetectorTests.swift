@@ -24,6 +24,35 @@ import Testing
     #expect(abs(e.semiMajor - want.major) < 6 && abs(e.semiMinor - want.minor) < 6, "axes \(e.semiMajor)/\(e.semiMinor)")
   }
 
+  /// A tan stoneware mug: its rim and handle pass as crema and join the
+  /// coffee. The fit must follow the round rim, not stretch over the handle.
+  /// (A crop of an in-app screenshot, so the old overlay is still drawn on it.)
+  @Test func ignoresAStonewareHandle() throws {
+    let url = try #require(Bundle.module.url(forResource: "stoneware-handle", withExtension: "jpg", subdirectory: "Fixtures/cups"))
+    let image = try RGBAImage.load(contentsOf: url)
+    let result = try CupDetector.detect(LabImage(image))
+    DebugRender.write(image, ellipse: result.ellipse, tint: result.surface, name: "cup-stoneware-handle")
+    let e = result.ellipse
+    #expect(abs(e.centerX - 207) < 6 && abs(e.centerY - 247) < 6, "center (\(e.centerX), \(e.centerY))")
+    #expect(abs(e.semiMajor - 150) < 6 && abs(e.semiMinor - 144) < 6, "axes \(e.semiMajor)/\(e.semiMinor)")
+  }
+
+  @Test func outlineFitIgnoresAnAttachedBlob() throws {
+    // A disc of radius 40 with a 30×30 square stuck to its right side.
+    let w = 160, h = 120
+    var mask = [UInt8](repeating: 0, count: w * h)
+    for y in 0..<h {
+      for x in 0..<w {
+        let inDisc = hypot(Double(x) + 0.5 - 60, Double(y) + 0.5 - 60) < 40
+        let inBlob = x >= 95 && x < 125 && y >= 45 && y < 75
+        if inDisc || inBlob { mask[y * w + x] = 1 }
+      }
+    }
+    let e = try #require(CupDetector.fitOutline(mask, width: w, height: h))
+    #expect(abs(e.centerX - 60) < 1.5 && abs(e.centerY - 60) < 1.5, "center (\(e.centerX), \(e.centerY))")
+    #expect(abs(e.semiMajor - 40) < 1.5 && abs(e.semiMinor - 40) < 1.5, "axes \(e.semiMajor)/\(e.semiMinor)")
+  }
+
   @Test func rejectsAPhotoWithNoCoffee() {
     let gray = RGBAImage(width: 64, height: 64, pixels: Array(repeating: [200, 200, 200, 255], count: 64 * 64).flatMap { $0 })
     #expect(throws: CupDetector.Failure.noCoffeeFound) { try CupDetector.detect(LabImage(gray)) }
