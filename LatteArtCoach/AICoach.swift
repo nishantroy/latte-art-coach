@@ -11,7 +11,7 @@ struct AICoaching {
   var focus: String
   @Guide(description: "Specific technique tips for the next pour, most important first.", .count(1...3))
   var tips: [AITip]
-  @Guide(description: "One short sentence about a recurring problem or an improvement across recent pours, based only on the history facts. Empty if there is nothing to say.")
+  @Guide(description: "One short sentence to the barista, addressed as you, about a recurring problem or an improvement across recent pours, based only on the history facts. Empty if there is nothing to say.")
   var progress: String
 }
 
@@ -97,13 +97,30 @@ final class AICoach {
     let session = LanguageModelSession(instructions: CoachingBrief.instructions)
     self.session = session
     phase = .thinking
-    do {
+    let work = Task { @MainActor () -> SavedCoaching? in
       var latest: SavedCoaching?
       for try await snapshot in session.streamResponse(to: prompt, generating: AICoaching.self) {
+        try Task.checkCancellation()
         latest = SavedCoaching(snapshot.content)
         phase = .writing(latest!)
       }
-      guard let latest, !latest.focus.isEmpty else { phase = .failed; return nil }
+      return latest
+    }
+    // If the model hasn't started writing in time, show the built-in tips
+    // rather than a spinner that never ends.
+    let watchdog = Task { @MainActor in
+      try await Task.sleep(for: Self.startTimeout)
+      if case .thinking = phase {
+        phase = .failed
+        work.cancel()
+      }
+    }
+    defer { watchdog.cancel() }
+    do {
+      guard let latest = try await work.value, !latest.focus.isEmpty else {
+        phase = .failed
+        return nil
+      }
       phase = .done(latest)
       return latest
     } catch {
@@ -111,6 +128,8 @@ final class AICoach {
       return nil
     }
   }
+
+  static let startTimeout: Duration = .seconds(20)
 
   func ask(_ question: String) async {
     var question = question

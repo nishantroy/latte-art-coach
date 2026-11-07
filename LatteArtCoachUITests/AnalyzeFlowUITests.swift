@@ -32,11 +32,16 @@ final class AnalyzeFlowUITests: XCTestCase {
       $0.frame.width > 20 && screen.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY))
     }
     let newest = try XCTUnwrap(visible.min { ($0.frame.minY, $0.frame.minX) < ($1.frame.minY, $1.frame.minX) })
-    newest.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    // A tap while the picker is still settling can be dropped; tap again
+    // while the picker is up and the rating step hasn't appeared.
+    for _ in 1...3 {
+      newest.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+      if app.buttons["rating-7"].waitForExistence(timeout: 20) || !newest.exists { break }
+    }
 
     // Rate first: the score stays hidden until the pour is rated.
     let seven = app.buttons["rating-7"]
-    XCTAssertTrue(seven.waitForExistence(timeout: 20), "Rating step didn't appear")
+    XCTAssertTrue(seven.waitForExistence(timeout: 30), "Rating step didn't appear")
     XCTAssertFalse(app.staticTexts["overall-score"].exists, "Score shown before rating")
     let reveal = app.buttons["reveal"]
     XCTAssertFalse(reveal.isEnabled, "Reveal should wait for a rating")
@@ -55,9 +60,17 @@ final class AnalyzeFlowUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["You rated it 7/10"].exists)
     XCTAssertTrue(app.navigationBars["Your tulip"].exists)
 
-    // Re-score the same photo as a rosetta without picking it again.
-    let rosetta = app.buttons["Rosetta"]
-    for _ in 0..<6 where !rosetta.isHittable { app.swipeUp() }
+    // Re-score the same photo as a rosetta without picking it again
+    // (under the folded "Score details").
+    let details = app.buttons["score-details"].firstMatch
+    for _ in 0..<6 where !details.isHittable { app.swipeUp() }
+    details.tap()
+    let rosetta = app.buttons["Rosetta"].firstMatch
+    if !rosetta.waitForExistence(timeout: 3) {
+      details.tap()
+      XCTAssertTrue(rosetta.waitForExistence(timeout: 3), "Score details didn't open")
+    }
+    for _ in 0..<4 where !rosetta.isHittable { app.swipeUp() }
     capture("3a-result-scrolled")
     rosetta.tap()
     XCTAssertTrue(app.navigationBars["Your rosetta"].waitForExistence(timeout: 5), "Re-scoring didn't switch the pattern")
@@ -66,15 +79,24 @@ final class AnalyzeFlowUITests: XCTestCase {
     // Coaching: from the on-device model when Apple Intelligence is on,
     // otherwise the rule-based tips (the Simulator usually can't run the
     // model; pour 3 scored as a rosetta gets "Thinner leaves").
-    let coached = app.staticTexts["coach-focus"].exists || app.otherElements["coach-thinking"].exists
-      || app.staticTexts["Thinner leaves"].exists
+    // Re-scoring restarts the coaching, so wait for it (or the fallback).
+    let anyCoaching = { (id: String) in app.descendants(matching: .any).matching(identifier: id).firstMatch.exists }
+    let coachDeadline = Date().addingTimeInterval(40)
+    var coached = false
+    while !coached && Date() < coachDeadline {
+      coached = anyCoaching("coach-focus") || anyCoaching("coach-thinking") || app.staticTexts["Thinner leaves"].exists
+      if !coached { sleep(1) }
+    }
+    if !coached { print("COACHING TREE:\n\(app.debugDescription)") }
     XCTAssertTrue(coached, "No coaching or fallback tips shown")
 
     // The pour shows up in history with its rating.
-    let again = app.buttons["Score another pour"]
-    for _ in 0..<4 where !again.isHittable { app.swipeUp() }
+    // It's the last thing on the page: scroll to the end, then tap.
+    let again = app.buttons["pour-another"]
+    for _ in 0..<5 { app.swipeUp() }
+    XCTAssertTrue(again.waitForExistence(timeout: 5))
     again.tap()
-    app.buttons["history"].tap()
+    app.tabBars.buttons["History"].tap()
     XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
     let row = app.descendants(matching: .any).matching(identifier: "pour-row").firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5), "No pour in history")

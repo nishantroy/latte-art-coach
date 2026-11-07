@@ -3,102 +3,76 @@ import PhotosUI
 import SwiftData
 import SwiftUI
 
-/// Pick or take a photo → analyze → results.
+/// Three tabs: Pour (score a new one), History and Beans. Each keeps its own
+/// navigation, so back always goes where you came from.
 struct ContentView: View {
+  enum AppTab: Hashable { case pour, history, beans }
+
   @Environment(\.modelContext) private var context
   @State private var model = CoachModel()
-  @State private var pickerItem: PhotosPickerItem?
-  @State private var showingCamera = false
-  @State private var path: [Route] = []
-  @AppStorage("pattern") private var pattern: Pattern = .tulip
-  @Query(sort: \Pour.date) private var pours: [Pour]
+  @State private var tab: AppTab = .pour
+  @State private var pourPath: [Route] = []
+  @State private var historyPath: [Route] = []
+  @State private var beansPath: [Route] = []
 
   var body: some View {
-    NavigationStack(path: $path) {
-      Group {
-        switch model.state {
-        case .idle:
-          start
-        case .analyzing:
-          ProgressView("Analyzing your pour…")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.milk)
-        case .rating(let photo, let analysis, let pour):
-          RateFirstView(photo: photo, analysis: analysis, pour: pour, onReveal: { model.reveal() })
-        case .result(let photo, let analysis, let pour):
-          ResultView(
-            photo: photo, analysis: analysis, pour: pour,
-            onRescore: { newPattern in
-              pattern = newPattern
-              Task { await model.rescore(as: newPattern) }
-            },
-            onAdjustCup: { cup in Task { await model.adjustCup(cup) } },
-            onAgain: { model.reset() })
-        case .failed(let message):
-          failure(message)
+    TabView(selection: $tab) {
+      Tab("Pour", systemImage: "cup.and.saucer.fill", value: .pour) {
+        NavigationStack(path: $pourPath) {
+          StartView { pourPath.append(.score) }
+            .routes()
         }
+        .environment(\.goHome, GoHomeAction { pourPath.removeAll() })
       }
-      .navigationTitle(resultTitle)
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        if !isAnalyzing {
-          ToolbarItem(placement: .topBarLeading) {
-            NavigationLink(value: Route.history) {
-              Label("History", systemImage: "clock.arrow.circlepath")
-            }
-            .accessibilityIdentifier("history")
-          }
-          ToolbarItem(placement: .topBarLeading) {
-            NavigationLink(value: Route.beans) {
-              Label("Beans", systemImage: "bag")
-            }
-            .accessibilityIdentifier("beans")
-          }
-        }
-        // Every screen past the start one can go straight home; the pour is
-        // already saved, so nothing is lost.
-        if showsDone { DoneButton() }
+      Tab("History", systemImage: "chart.line.uptrend.xyaxis", value: .history) {
+        NavigationStack(path: $historyPath) { HistoryView().routes() }
       }
-      .navigationDestination(for: Route.self) { route in
-        switch route {
-        case .history: HistoryView()
-        case .pour(let pour): PourDetailView(pour: pour)
-        case .beans: BeansView()
-        case .bean(let bean): BeanDetailView(bean: bean)
-        }
+      Tab("Beans", systemImage: "bag", value: .beans) {
+        NavigationStack(path: $beansPath) { BeansView().routes() }
       }
     }
-    .environment(\.goHome, GoHomeAction {
-      path.removeAll()
-      model.reset()
-    })
+    .tint(.crema)
+    .environment(model)
     .onAppear { model.context = context }
-    .onChange(of: pickerItem) { _, item in
-      guard let item else { return }
-      pickerItem = nil
-      Task {
-        guard let data = try? await item.loadTransferable(type: Data.self) else {
-          model.fail("Couldn't open that photo.")
-          return
-        }
-        await model.analyze(data, as: pattern)
-      }
+    // Leaving the scoring flow (back, or "Pour another") starts fresh.
+    .onChange(of: pourPath) { _, path in
+      if !path.contains(.score) { model.reset() }
     }
-    .fullScreenCover(isPresented: $showingCamera) {
-      LiveCameraView(pattern: pattern) { data in
-        showingCamera = false
-        if let data { Task { await model.analyze(data, as: pattern) } }
+  }
+}
+
+extension View {
+  /// Every screen any tab can push.
+  func routes() -> some View {
+    navigationDestination(for: Route.self) { route in
+      switch route {
+      case .score: ScoreFlowView()
+      case .pour(let pour): PourDetailView(pour: pour)
+      case .bean(let bean): BeanDetailView(bean: bean)
       }
     }
   }
+}
 
-  private var start: some View {
-    VStack(spacing: 22) {
-      Spacer(minLength: 8)
+/// The Pour tab's first screen: pick the pattern, then take or choose a photo.
+struct StartView: View {
+  /// Called once a photo is scored and ready to rate.
+  let onScored: () -> Void
+  @Environment(CoachModel.self) private var model
+  @State private var pickerItem: PhotosPickerItem?
+  @State private var showingCamera = false
+  @State private var failure: String?
+  @AppStorage("pattern") private var pattern: Pattern = .tulip
+  @AppStorage("historyPattern") private var historyPattern: Pattern = .tulip
+  @Query(sort: \Pour.date) private var pours: [Pour]
+
+  var body: some View {
+    VStack(spacing: 20) {
+      Spacer(minLength: 0)
       Image("IconArt")
         .resizable()
-        .frame(width: 112, height: 112)
-        .clipShape(.rect(cornerRadius: 26))
+        .frame(width: 96, height: 96)
+        .clipShape(.rect(cornerRadius: 22))
         .shadow(color: Color.espresso.opacity(0.18), radius: 12, y: 6)
         .accessibilityHidden(true)
       VStack(spacing: 6) {
@@ -114,7 +88,7 @@ struct ContentView: View {
           .card()
           .accessibilityIdentifier("progress-line")
       }
-      Spacer(minLength: 8)
+      Spacer(minLength: 0)
       VStack(alignment: .leading, spacing: 10) {
         Text("What did you pour?").font(.display(.title3))
         PatternPicker(selection: $pattern)
@@ -135,9 +109,55 @@ struct ContentView: View {
       }
       .controlSize(.large)
     }
-    .padding(24)
+    .padding(.horizontal, 24)
+    .padding(.vertical, 16)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.milk)
+    .overlay {
+      if case .analyzing = model.state {
+        ZStack {
+          Color.milk.opacity(0.85).ignoresSafeArea()
+          ProgressView("Analyzing your pour…")
+        }
+      }
+    }
+    .toolbar(.hidden, for: .navigationBar)
+    .alert("Couldn't score this one", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(failure ?? "")
+    }
+    .onChange(of: pickerItem) { _, item in
+      guard let item else { return }
+      pickerItem = nil
+      Task {
+        guard let data = try? await item.loadTransferable(type: Data.self) else {
+          failure = "Couldn't open that photo."
+          return
+        }
+        await score(data)
+      }
+    }
+    .fullScreenCover(isPresented: $showingCamera) {
+      LiveCameraView(pattern: pattern) { data in
+        showingCamera = false
+        if let data { Task { await score(data) } }
+      }
+    }
+  }
+
+  private func score(_ data: Data) async {
+    await model.analyze(data, as: pattern)
+    switch model.state {
+    case .rating:
+      // History opens on what you just poured.
+      historyPattern = pattern
+      onScored()
+    case .failed(let message):
+      failure = message
+      model.reset()
+    default: break
+    }
   }
 
   /// How the chosen pattern is going, from history.
@@ -151,37 +171,45 @@ struct ContentView: View {
     let direction = recent > earlier ? "up from" : recent < earlier ? "down from" : "same as"
     return "Last \(summary.recentCount) \(pattern.noun)s: \(recent), \(direction) \(earlier) before"
   }
-
-  private var showsDone: Bool {
-    switch model.state {
-    case .rating, .result, .failed: true
-    case .idle, .analyzing: false
-    }
-  }
-
-  private var isAnalyzing: Bool {
-    if case .analyzing = model.state { return true }
-    return false
-  }
-
-  private var resultTitle: String {
-    if case .result(_, let analysis, _) = model.state { return "Your \(analysis.pattern.noun)" }
-    if case .rating(_, let analysis, _) = model.state { return "Your \(analysis.pattern.noun)" }
-    return ""
-  }
-
-  private func failure(_ message: String) -> some View {
-    ContentUnavailableView {
-      Label("Couldn't score this one", systemImage: "cup.and.saucer")
-    } description: {
-      Text(message)
-    } actions: {
-      Button("Try another photo") { model.reset() }
-        .buttonStyle(.borderedProminent)
-    }
-  }
 }
 
-#Preview {
-  ContentView()
+/// Rate the new pour, then see its score. Back (or "Pour another") returns
+/// to the start; the pour is already saved.
+struct ScoreFlowView: View {
+  @Environment(CoachModel.self) private var model
+  @Environment(\.goHome) private var goHome
+  @AppStorage("pattern") private var pattern: Pattern = .tulip
+  @AppStorage("historyPattern") private var historyPattern: Pattern = .tulip
+
+  var body: some View {
+    Group {
+      switch model.state {
+      case .rating(let photo, let analysis, let pour):
+        RateFirstView(photo: photo, analysis: analysis, pour: pour, onReveal: { model.reveal() })
+      case .result(let photo, let analysis, let pour):
+        ResultView(
+          photo: photo, analysis: analysis, pour: pour,
+          onRescore: { newPattern in
+            pattern = newPattern
+            historyPattern = newPattern
+            Task { await model.rescore(as: newPattern) }
+          },
+          onAdjustCup: { cup in Task { await model.adjustCup(cup) } },
+          onAgain: { goHome() })
+      case .failed(let message):
+        ContentUnavailableView("Couldn't score this one", systemImage: "cup.and.saucer", description: Text(message))
+      case .idle, .analyzing:
+        ProgressView()
+      }
+    }
+    .navigationTitle(title)
+    .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private var title: String {
+    switch model.state {
+    case .rating(_, let analysis, _), .result(_, let analysis, _): "Your \(analysis.pattern.noun)"
+    default: ""
+    }
+  }
 }

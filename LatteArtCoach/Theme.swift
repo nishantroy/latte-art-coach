@@ -11,6 +11,8 @@ extension Color {
   static let milk = Color(light: 0xF6EEE3, dark: 0x15100C)
   static let card = Color(light: 0xFFFBF5, dark: 0x241A14)
   static let espresso = Color(light: 0x2A1C14, dark: 0xF6EEE3)
+  /// Terracotta, for weak scores: warm like the rest, never traffic-light red.
+  static let weak = Color(light: 0xB5533A, dark: 0xD9785E)
 
   init(light: UInt32, dark: UInt32) {
     self.init(uiColor: UIColor { traits in UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light) })

@@ -2,76 +2,74 @@ import LatteCore
 import SwiftData
 import SwiftUI
 
-/// "How it tasted": balance, a 1–5 rating, and flavors noticed. Separate
-/// from the art score; it drives the dial-in advice and bean ratings.
-struct TasteCard: View {
+/// How the drink tasted, as Form rows: balance, a 1–5 rating, and flavors
+/// noticed. Separate from the art score; it drives the dial-in advice and
+/// bean ratings.
+struct TasteFields: View {
   @Bindable var pour: Pour
   @Environment(\.modelContext) private var context
   @State private var newNote = ""
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("How it tasted").font(.display(.title3))
-      HStack(spacing: 8) {
-        ForEach(DrinkTaste.Balance.allCases) { balance in
-          chip(balance.displayName, selected: pour.taste.balance == balance) {
-            update { $0.balance = $0.balance == balance ? nil : balance }
-          }
-          .accessibilityIdentifier("taste-\(balance.rawValue)")
+    Picker("Balance", selection: Binding(get: { pour.taste.balance }, set: { b in update { $0.balance = b } })) {
+      ForEach(DrinkTaste.Balance.allCases) { Text($0.displayName).tag(DrinkTaste.Balance?.some($0)) }
+    }
+    .pickerStyle(.segmented)
+    .accessibilityIdentifier("taste-balance")
+    HStack(spacing: 2) {
+      ForEach(1...5, id: \.self) { star in
+        Button {
+          update { $0.rating = $0.rating == star ? nil : star }
+        } label: {
+          Image(systemName: star <= (pour.drinkRating ?? 0) ? "star.fill" : "star")
+            .font(.title3)
+            .foregroundStyle(Color.measure)
+            .frame(width: 40, height: 40)
+            .contentShape(.rect)
         }
+        .buttonStyle(.borderless)
+        .accessibilityLabel("\(star) star\(star == 1 ? "" : "s")")
+        .accessibilityIdentifier("drink-\(star)")
       }
-      HStack(spacing: 4) {
-        ForEach(1...5, id: \.self) { star in
-          Button {
-            update { $0.rating = $0.rating == star ? nil : star }
-          } label: {
-            Image(systemName: star <= (pour.drinkRating ?? 0) ? "star.fill" : "star")
-              .font(.title3)
-              .foregroundStyle(Color.measure)
-              .frame(width: 36, height: 36)
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel("\(star) star\(star == 1 ? "" : "s")")
-          .accessibilityIdentifier("drink-\(star)")
-        }
-        Spacer()
-        if let rating = pour.drinkRating {
-          Text(["", "Didn't like it", "Meh", "Fine", "Good", "Loved it"][rating]).font(.subheadline).foregroundStyle(.secondary)
-        }
+      Spacer()
+      if let rating = pour.drinkRating {
+        Text(["", "Didn't like it", "Meh", "Fine", "Good", "Loved it"][rating])
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
       }
-      .sensoryFeedback(.selection, trigger: pour.drinkRating)
-      VStack(alignment: .leading, spacing: 8) {
-        Text("Flavors you noticed").font(.subheadline.weight(.semibold))
-        ScrollView(.horizontal) {
-          HStack(spacing: 8) {
-            ForEach(noteChoices, id: \.self) { note in
-              chip(note, selected: pour.tastedNotes.contains(note)) {
-                update { taste in
-                  if let i = taste.notes.firstIndex(of: note) { taste.notes.remove(at: i) } else { taste.notes.append(note) }
-                }
+    }
+    .sensoryFeedback(.selection, trigger: pour.drinkRating)
+    VStack(alignment: .leading, spacing: 8) {
+      Text("Flavors you noticed").font(.subheadline).foregroundStyle(.secondary)
+      ScrollView(.horizontal) {
+        HStack(spacing: 8) {
+          ForEach(noteChoices, id: \.self) { note in
+            chip(note, selected: pour.tastedNotes.contains(note)) {
+              update { taste in
+                if let i = taste.notes.firstIndex(of: note) { taste.notes.remove(at: i) } else { taste.notes.append(note) }
               }
             }
           }
         }
-        .scrollIndicators(.hidden)
-        TextField("Add a flavor", text: $newNote)
-          .textFieldStyle(.roundedBorder)
-          .submitLabel(.done)
-          .onSubmit {
-            let note = newNote.trimmingCharacters(in: .whitespaces).lowercased()
-            newNote = ""
-            guard !note.isEmpty, !pour.tastedNotes.contains(note) else { return }
-            update { $0.notes.append(note) }
-          }
       }
+      .scrollIndicators(.hidden)
     }
+    TextField("Add a flavor", text: $newNote)
+      .submitLabel(.done)
+      .onSubmit {
+        let note = newNote.trimmingCharacters(in: .whitespaces).lowercased()
+        newNote = ""
+        guard !note.isEmpty, !pour.tastedNotes.contains(note) else { return }
+        update { $0.notes.append(note) }
+      }
   }
 
   /// The bag's notes first (to check against), then anything already picked.
   private var noteChoices: [String] {
     var choices = (pour.bean?.tastingNotes ?? []).map { $0.lowercased() }
+    if choices.isEmpty { choices = ["chocolate", "caramel", "nutty", "fruity", "citrus", "floral"] }
     for note in pour.tastedNotes where !choices.contains(note) { choices.append(note) }
-    return choices.isEmpty ? ["chocolate", "caramel", "nutty", "fruity", "citrus", "floral"] : choices
+    return choices
   }
 
   private func update(_ change: (inout DrinkTaste) -> Void) {
@@ -90,7 +88,7 @@ struct TasteCard: View {
         .foregroundStyle(selected ? Color.white : Color.espresso)
         .background(selected ? Color.crema : Color.crema.opacity(0.1), in: .capsule)
     }
-    .buttonStyle(.plain)
+    .buttonStyle(.borderless)
   }
 }
 
@@ -125,6 +123,7 @@ struct DialInCard: View {
           .font(.footnote)
           .foregroundStyle(.secondary)
       }
+      .card()
       .accessibilityIdentifier("dial-in")
     }
   }

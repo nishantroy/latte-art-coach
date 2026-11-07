@@ -16,7 +16,7 @@ struct BeansView: View {
         let preferences = TastePreferences(records: pours.map(\.record))
         if preferences.findings.isEmpty {
           Text(preferences.ratedDrinks == 0
-            ? "Rate how your drinks taste (the stars under “How it tasted”) and this fills in with what you like."
+            ? "Rate how your drinks taste (tap “Your drink” on a result) and this fills in with what you like."
             : "\(preferences.ratedDrinks) rated drink\(preferences.ratedDrinks == 1 ? "" : "s") so far. Comparisons show up once there are \(TastePreferences.minimumDrinks)+ drinks of each kind.")
             .font(.subheadline)
             .foregroundStyle(.secondary)
@@ -53,7 +53,6 @@ struct BeansView: View {
     .background(Color.milk)
     .navigationTitle("Beans")
     .toolbar {
-      DoneButton()
       ToolbarItem(placement: .topBarTrailing) {
         Button { adding = true } label: { Label("Add beans", systemImage: "plus") }
           .accessibilityIdentifier("add-beans")
@@ -130,7 +129,6 @@ struct BeanDetailView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         VStack(alignment: .leading, spacing: 6) {
-          Text(bean.name).font(.display(.title))
           Text(BeanFacts.line(bean)).font(.subheadline).foregroundStyle(.secondary)
           if !bean.tastingNotes.isEmpty {
             Text("On the bag: " + bean.tastingNotes.joined(separator: ", ")).font(.subheadline)
@@ -197,13 +195,12 @@ struct BeanDetailView: View {
       .padding()
     }
     .background(Color.milk)
-    .navigationTitle("Beans")
-    .navigationBarTitleDisplayMode(.inline)
+    .navigationTitle(bean.name)
+    .navigationBarTitleDisplayMode(.large)
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         Button("Edit") { editing = true }.accessibilityIdentifier("edit-beans")
       }
-      DoneButton()
     }
     .sheet(isPresented: $editing) {
       NewBeanForm(editing: bean) { _ in try? context.save() }

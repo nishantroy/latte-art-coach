@@ -7,7 +7,8 @@ import SwiftUI
 struct HistoryView: View {
   @Environment(\.modelContext) private var context
   @Query(sort: \Pour.date, order: .reverse) private var pours: [Pour]
-  @AppStorage("pattern") private var pattern: Pattern = .tulip
+  /// Separate from the Pour tab's choice: browsing history shouldn't change what you're about to pour.
+  @AppStorage("historyPattern") private var pattern: Pattern = .tulip
   @State private var export: ExportFiles?
 
   private var shown: [Pour] { pours.filter { $0.pattern == pattern } }
@@ -15,7 +16,11 @@ struct HistoryView: View {
   var body: some View {
     List {
       Section {
-        PatternPicker(selection: $pattern)
+        Picker("Pattern", selection: $pattern) {
+          ForEach(Pattern.allCases) { Text($0.displayName).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("history-pattern")
       }
       .listRowBackground(Color.clear)
       .listRowInsets(EdgeInsets())
@@ -41,14 +46,13 @@ struct HistoryView: View {
     .background(Color.milk)
     .navigationTitle("History")
     .toolbar {
-      DoneButton()
       ToolbarItem(placement: .topBarTrailing) {
-      Button {
-        export = try? ExportFiles(pours: pours)
-      } label: {
-        Label("Export", systemImage: "square.and.arrow.up")
-      }
-      .disabled(pours.isEmpty)
+        Button {
+          export = try? ExportFiles(pours: pours)
+        } label: {
+          Label("Export", systemImage: "square.and.arrow.up")
+        }
+        .disabled(pours.isEmpty)
       }
     }
     .sheet(item: $export) { files in
@@ -165,7 +169,6 @@ struct PourDetailView: View {
     }
     .navigationTitle(pour.date.formatted(date: .abbreviated, time: .omitted))
     .navigationBarTitleDisplayMode(.inline)
-    .toolbar { DoneButton() }
     .task { await load(as: pour.pattern) }
   }
 

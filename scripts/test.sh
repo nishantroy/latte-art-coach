@@ -4,6 +4,7 @@
 #   scripts/test.sh                       # unit tests only (no Simulator)
 #   UI=1 scripts/test.sh                  # also UI tests on the iPhone 17 simulator
 #   UI=1 SIM_NAME="iPhone Air" scripts/test.sh
+#   UI=1 ONLY=LatteArtCoachUITests/ScreenTourUITests scripts/test.sh   # one UI test class
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
@@ -50,6 +51,7 @@ xcodebuild test \
   -scheme LatteArtCoach \
   -destination "platform=iOS Simulator,id=$UDID" \
   -derivedDataPath "$CACHE/DerivedData" \
+  ${ONLY:+-only-testing:"$ONLY"} \
   -resultBundlePath "$OUT/result-$(date +%Y%m%d-%H%M%S).xcresult" > "$LOG" 2>&1
 STATUS=$?
 set -e

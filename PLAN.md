@@ -16,6 +16,7 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 ## Architecture
 
 - **`LatteArtCoach/`** is the SwiftUI app target. Its Xcode project is generated from `project.yml` by XcodeGen. The `.xcodeproj` isn't checked in.
+- **Navigation:** three tabs (Pour, History, Beans), each with its own stack. Scoring is a pushed flow in the Pour tab (rate, then the result), so back always works. The result screen shows the score and coaching first, then one "Your drink" card (brew and taste in one sheet) and dial-in, with the breakdown and rarely used controls folded under "Score details". `ScreenTourUITests` screenshots every screen for design review.
 - **`Packages/LatteCore/`** is a Swift package with no UI dependencies. It holds image preparation, cup detection, foam segmentation, measurements, scoring and the rule-based tips. `swift test` runs it on the Mac in seconds.
 - **Patterns:** one shared measurement pass (`PourMetrics`) feeds a per-pattern score (`PourScore`) with its own weights, size ranges and a `definition` component: a solid heart that closes to a point, thick separate tulip stacks, or many thin rosetta leaves. The user picks the intended pattern and can re-score a photo as another one. A conservative classifier (`Pattern.resembling`) points out when the foam clearly reads as a different pattern.
 - **Image math** runs on Accelerate (vDSP and vImage) and Core Image rather than per-pixel Swift loops where it matters.

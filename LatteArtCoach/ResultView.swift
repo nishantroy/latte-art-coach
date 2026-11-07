@@ -4,17 +4,17 @@ import SwiftUI
 struct ResultView: View {
   let photo: UIImage
   let analysis: PourAnalysis
-  /// The saved pour, for the user's rating.
+  /// The saved pour, for the user's rating and drink log.
   let pour: Pour?
   let onRescore: (Pattern) -> Void
-  /// Re-scores with a hand-placed cup outline.
-  /// Nil goes back to automatic detection.
+  /// Re-scores with a hand-placed cup outline; nil goes back to automatic.
   let onAdjustCup: (LatteCore.Ellipse?) -> Void
   /// Nil when showing a pour from history.
   let onAgain: (() -> Void)?
   @State private var showOverlay = true
-  @State private var selectedPattern: Pattern?
   @State private var adjustingCup = false
+  @State private var editingRating = false
+  @State private var showingDetails = false
 
   var body: some View {
     ScrollView {
@@ -22,15 +22,9 @@ struct ResultView: View {
         PourPhotoView(photo: photo, analysis: analysis, showOverlay: showOverlay)
           .onTapGesture { showOverlay.toggle() }
           .accessibilityLabel("Photo of your pour, tap to toggle the overlay")
-        Button { adjustingCup = true } label: {
-          Label("Cup outline wrong? Adjust it", systemImage: "circle.dashed")
-            .font(.footnote)
-        }
-        .tint(.crema)
-        .accessibilityIdentifier("adjust-cup")
         scoreHeader
         if let looks = resemblance {
-          Button { rescore(looks) } label: {
+          Button { onRescore(looks) } label: {
             Label("This reads more like a \(looks.noun). Score it as one", systemImage: "arrow.triangle.2.circlepath")
               .font(.subheadline)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -42,37 +36,17 @@ struct ResultView: View {
         }
         CoachingSection(analysis: analysis, pour: pour).card()
         if let pour {
-          BrewCard(pour: pour).card()
-          TasteCard(pour: pour).card()
+          DrinkLogCard(pour: pour).card()
           DialInCard(pour: pour, contrast: analysis.score.components[.contrast] ?? 1)
-            .card()
         }
-        breakdown.card()
-        if let pour {
-          VStack(alignment: .leading, spacing: 10) {
-            Text("Your rating").font(.display(.title3))
-            RatingRow(rating: Binding(get: { pour.rating }, set: { pour.rating = $0; try? pour.modelContext?.save() }))
-          }
-          .card()
-        }
-        VStack(alignment: .leading, spacing: 10) {
-          Text("Scored as").font(.display(.title3))
-          PatternPicker(selection: Binding(get: { selectedPattern ?? analysis.pattern }, set: { selectedPattern = $0 }))
-            .onChange(of: selectedPattern) { _, pattern in
-              if let pattern, pattern != analysis.pattern { onRescore(pattern) }
-            }
-        }
-        .card()
-        Text("Analyzed on device in \(analysis.duration.formatted(.units(allowed: [.milliseconds])))")
-          .font(.footnote)
-          .foregroundStyle(.secondary)
-          .accessibilityIdentifier("analysis-duration")
+        details.card()
         if let onAgain {
           Button(action: onAgain) {
-            Label("Score another pour", systemImage: "camera").frame(maxWidth: .infinity)
+            Label("Pour another", systemImage: "camera").frame(maxWidth: .infinity)
           }
           .buttonStyle(.borderedProminent)
           .controlSize(.large)
+          .accessibilityIdentifier("pour-another")
         }
       }
       .padding()
@@ -81,17 +55,31 @@ struct ResultView: View {
     .sheet(isPresented: $adjustingCup) {
       CupAdjustView(photo: photo, analysis: analysis, isManual: pour?.manualCup != nil) { cup in onAdjustCup(cup) }
     }
+    .sheet(isPresented: $editingRating) {
+      if let pour {
+        VStack(alignment: .leading, spacing: 14) {
+          Text("Your rating").font(.display(.title3))
+          RatingRow(rating: Binding(get: { pour.rating }, set: { pour.rating = $0; try? pour.modelContext?.save() }))
+        }
+        .padding(20)
+        .presentationDetents([.height(170)])
+        .presentationBackground(Color.milk)
+      }
+    }
   }
-
-  private func rescore(_ pattern: Pattern) { selectedPattern = pattern }
 
   private var scoreHeader: some View {
     HStack(spacing: 16) {
-      ScoreGauge(score: analysis.score.overall).frame(width: 132, height: 132)
-      VStack(alignment: .leading, spacing: 6) {
+      ScoreGauge(score: analysis.score.overall).frame(width: 124, height: 124)
+      VStack(alignment: .leading, spacing: 8) {
         Text(verdict).font(.display(.title2))
-        if let rating = pour?.rating {
-          Text("You rated it \(rating)/10").font(.subheadline).foregroundStyle(.secondary)
+        if let pour {
+          Button { editingRating = true } label: {
+            Label(pour.rating.map { "You rated it \($0)/10" } ?? "Add your rating", systemImage: "pencil")
+              .font(.subheadline)
+          }
+          .tint(.crema)
+          .accessibilityIdentifier("your-rating")
         }
         Text(showOverlay ? "Tap the photo to hide what was measured" : "Tap the photo to show what was measured")
           .font(.caption)
@@ -116,19 +104,46 @@ struct ResultView: View {
     return looks
   }
 
-  private var breakdown: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Text("Breakdown").font(.display(.title3))
-      ForEach(PourScore.Component.allCases, id: \.self) { component in
-        let label = component.label(for: analysis.pattern)
-        let value = analysis.score.components[component] ?? 0
-        HStack {
-          Text(label).font(.subheadline).frame(width: 116, alignment: .leading)
-          ProgressView(value: value).tint(value >= 0.7 ? .green : value >= 0.4 ? .orange : .red)
-          Text("\(Int((value * 100).rounded()))").font(.subheadline.monospacedDigit()).frame(width: 32, alignment: .trailing)
+  /// The breakdown and the rarely used controls, folded away.
+  private var details: some View {
+    DisclosureGroup(isExpanded: $showingDetails) {
+      VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 8) {
+          ForEach(PourScore.Component.allCases, id: \.self) { component in
+            let value = analysis.score.components[component] ?? 0
+            HStack {
+              Text(component.label(for: analysis.pattern)).font(.subheadline).frame(width: 116, alignment: .leading)
+              ProgressView(value: value).tint(value >= 0.5 ? Color.measure : Color.weak)
+              Text("\(Int((value * 100).rounded()))").font(.subheadline.monospacedDigit()).frame(width: 32, alignment: .trailing)
+            }
+          }
         }
+        Divider()
+        LabeledContent("Scored as") {
+          Picker("Scored as", selection: Binding(get: { analysis.pattern }, set: { if $0 != analysis.pattern { onRescore($0) } })) {
+            ForEach(Pattern.allCases) { Text($0.displayName).tag($0) }
+          }
+          .pickerStyle(.segmented)
+          .frame(maxWidth: 230)
+          .accessibilityIdentifier("scored-as")
+        }
+        .font(.subheadline)
+        Button { adjustingCup = true } label: {
+          Label("Cup outline wrong? Adjust it", systemImage: "circle.dashed").font(.subheadline)
+        }
+        .tint(.crema)
+        .accessibilityIdentifier("adjust-cup")
+        Text("Analyzed on this iPhone in \(analysis.duration.formatted(.units(allowed: [.milliseconds])))")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .accessibilityIdentifier("analysis-duration")
       }
+      .padding(.top, 10)
+    } label: {
+      Text("Score details").font(.display(.title3)).foregroundStyle(Color.espresso)
     }
+    .tint(.crema)
+    .accessibilityIdentifier("score-details")
   }
 }
 

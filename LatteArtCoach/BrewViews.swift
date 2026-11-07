@@ -3,8 +3,8 @@ import PhotosUI
 import SwiftData
 import SwiftUI
 
-/// "Brew details" on a result: a summary, tap to edit.
-struct BrewCard: View {
+/// "Log this drink" on a result: brew and taste in a few lines, tap to edit.
+struct DrinkLogCard: View {
   @Bindable var pour: Pour
   @State private var editing = false
 
@@ -12,12 +12,12 @@ struct BrewCard: View {
     Button { editing = true } label: {
       VStack(alignment: .leading, spacing: 8) {
         HStack {
-          Text("Brew details").font(.display(.title3))
+          Text("Your drink").font(.display(.title3))
           Spacer()
-          Text(pour.brew.isEmpty ? "Add" : "Edit").font(.subheadline.weight(.semibold)).foregroundStyle(Color.crema)
+          Text(lines.isEmpty ? "Log it" : "Edit").font(.subheadline.weight(.semibold)).foregroundStyle(Color.crema)
         }
-        if pour.brew.isEmpty {
-          Text("Log the beans, shot and milk to see how they affect your pours.")
+        if lines.isEmpty {
+          Text("Log the beans, shot and how it tasted. It turns into grinder advice and shows what you like.")
             .font(.subheadline)
             .foregroundStyle(.secondary)
         } else {
@@ -27,10 +27,11 @@ struct BrewCard: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(.rect)
     }
     .buttonStyle(.plain)
-    .accessibilityIdentifier("brew-card")
-    .sheet(isPresented: $editing) { BrewEditor(pour: pour) }
+    .accessibilityIdentifier("drink-card")
+    .sheet(isPresented: $editing) { DrinkLogEditor(pour: pour) }
   }
 
   private var lines: [String] {
@@ -44,12 +45,16 @@ struct BrewCard: View {
     }
     if let shot = brew.shotSummary { lines.append(shot) }
     if let milk = brew.milk { lines.append("\(milk.displayName) milk") }
+    let taste = pour.taste
+    let tasteParts = [taste.balance?.displayName, taste.rating.map { String(repeating: "★", count: $0) },
+                      taste.notes.isEmpty ? nil : taste.notes.joined(separator: ", ")].compactMap { $0 }
+    if !tasteParts.isEmpty { lines.append("Tasted: " + tasteParts.joined(separator: " · ")) }
     return lines
   }
 }
 
-/// Edits one pour's beans, shot and milk.
-struct BrewEditor: View {
+/// One sheet for the whole drink: how it tasted, the shot, beans and milk.
+struct DrinkLogEditor: View {
   @Bindable var pour: Pour
   @Environment(\.dismiss) private var dismiss
   @Environment(\.modelContext) private var context
@@ -59,14 +64,10 @@ struct BrewEditor: View {
   var body: some View {
     NavigationStack {
       Form {
-        Section("Beans") {
-          Picker("Beans", selection: $pour.bean) {
-            Text("None").tag(Bean?.none)
-            ForEach(beans) { bean in
-              Text(bean.roaster.map { "\(bean.name) · \($0)" } ?? bean.name).tag(Bean?.some(bean))
-            }
-          }
-          Button("Add new beans…") { addingBean = true }
+        Section {
+          TasteFields(pour: pour)
+        } header: {
+          Text("How it tasted")
         }
         Section {
           number("Dose", value: $pour.doseGrams, unit: "g")
@@ -76,13 +77,19 @@ struct BrewEditor: View {
             TextField("e.g. 12", text: Binding(get: { pour.grindSetting ?? "" }, set: { pour.grindSetting = $0.isEmpty ? nil : $0 }))
               .multilineTextAlignment(.trailing)
           }
-          if let summary = pour.brew.shotSummary {
-            Text(summary).font(.footnote).foregroundStyle(.secondary)
-          }
         } header: {
           Text("Espresso")
         } footer: {
           Text("New pours start from your last pour's details, so you only change what changed.")
+        }
+        Section("Beans") {
+          Picker("Beans", selection: $pour.bean) {
+            Text("None").tag(Bean?.none)
+            ForEach(beans) { bean in
+              Text(bean.roaster.map { "\(bean.name) · \($0)" } ?? bean.name).tag(Bean?.some(bean))
+            }
+          }
+          Button("Add new beans…") { addingBean = true }
         }
         Section("Milk") {
           Picker("Milk", selection: Binding(get: { pour.milk }, set: { pour.milk = $0 })) {
@@ -91,7 +98,9 @@ struct BrewEditor: View {
           }
         }
       }
-      .navigationTitle("Brew details")
+      .scrollContentBackground(.hidden)
+      .background(Color.milk)
+      .navigationTitle("Your drink")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
@@ -109,6 +118,7 @@ struct BrewEditor: View {
         }
       }
     }
+    .tint(.crema)
   }
 
   private func number(_ label: String, value: Binding<Double?>, unit: String) -> some View {
@@ -137,7 +147,7 @@ struct NewBeanForm: View {
   @Environment(\.dismiss) private var dismiss
   @State private var name = ""
   @State private var roaster = ""
-  @State private var knowsRoastDate = true
+  @State private var knowsRoastDate = false
   @State private var roastDate = Date.now
   @State private var origin = ""
   @State private var process = ""
@@ -207,6 +217,8 @@ struct NewBeanForm: View {
           TextField("Anything to remember about this bag", text: $myNotes, axis: .vertical)
         }
       }
+      .scrollContentBackground(.hidden)
+      .background(Color.milk)
       .navigationTitle(editing == nil ? "New beans" : "Edit beans")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -229,6 +241,7 @@ struct NewBeanForm: View {
       }
       .onAppear(perform: load)
     }
+    .tint(.crema)
   }
 
   private func load() {

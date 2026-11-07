@@ -12,7 +12,7 @@ public enum CoachingBrief {
     - Use only the facts provided. Don't invent measurements or numbers, and don't describe things the facts don't mention.
     - The score was measured from the photo. Never change it, argue with it, or give a different score.
     - Give concrete pouring technique: pitcher height, flow rate, spout position and movement, timing, cup tilt, milk texture.
-    - Speak directly to the barista ("you"). Be encouraging but specific and brief. No emoji.
+    - Speak directly to the barista as "you", never "the barista". Be encouraging but specific and brief. No emoji.
     """
 
   /// - Parameters:

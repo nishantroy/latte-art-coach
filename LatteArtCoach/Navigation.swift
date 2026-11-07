@@ -1,14 +1,14 @@
 import SwiftUI
 
-/// Screens pushed on the main navigation stack.
+/// Screens pushed inside a tab's navigation stack.
 enum Route: Hashable {
-  case history
+  /// Rating and scoring the photo just taken.
+  case score
   case pour(Pour)
-  case beans
   case bean(Bean)
 }
 
-/// Goes back to the start screen from anywhere.
+/// Ends the scoring flow: back to the Pour tab's start screen.
 struct GoHomeAction {
   let action: @MainActor () -> Void
   @MainActor func callAsFunction() { action() }
@@ -16,17 +16,4 @@ struct GoHomeAction {
 
 extension EnvironmentValues {
   @Entry var goHome = GoHomeAction(action: {})
-}
-
-/// "Done" at the top right: back to the start screen.
-struct DoneButton: ToolbarContent {
-  @Environment(\.goHome) private var goHome
-
-  var body: some ToolbarContent {
-    ToolbarItem(placement: .topBarTrailing) {
-      Button("Done") { goHome() }
-        .fontWeight(.semibold)
-        .accessibilityIdentifier("done")
-    }
-  }
 }

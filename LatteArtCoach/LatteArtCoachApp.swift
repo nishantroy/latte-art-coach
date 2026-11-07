@@ -8,6 +8,7 @@ struct LatteArtCoachApp: App {
     // UI tests start from a fresh install's state.
     if ProcessInfo.processInfo.arguments.contains("-uitest") {
       UserDefaults.standard.removeObject(forKey: "pattern")
+      UserDefaults.standard.removeObject(forKey: "historyPattern")
     }
   }
 
