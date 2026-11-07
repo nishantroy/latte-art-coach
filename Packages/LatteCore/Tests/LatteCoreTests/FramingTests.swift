@@ -44,3 +44,27 @@ import Testing
     #expect(framing(b: 100) == .holdFlatter)
   }
 }
+
+@Suite struct ManualCupTests {
+  @Test func placedCupMatchesTheDetectedOne() throws {
+    let data = try Data(contentsOf: Fixtures.pourURL(3))
+    let auto = try PourAnalysis.analyze(imageData: data, pattern: .tulip)
+    let placed = try PourAnalysis.analyze(imageData: data, pattern: .tulip, cup: auto.cup)
+    #expect(placed.score == auto.score)
+  }
+
+  @Test func aMisplacedCupChangesTheScore() throws {
+    let data = try Data(contentsOf: Fixtures.pourURL(3))
+    let auto = try PourAnalysis.analyze(imageData: data, pattern: .tulip)
+    var off = auto.cup
+    off.centerX += off.semiMajor * 0.3
+    let placed = try PourAnalysis.analyze(imageData: data, pattern: .tulip, cup: off)
+    #expect(placed.cup == off)
+    #expect(placed.score.components[.centering] != auto.score.components[.centering])
+  }
+
+  @Test func ellipseRoundTripsThroughJSON() throws {
+    let e = Ellipse(centerX: 1, centerY: 2, semiMajor: 3, semiMinor: 2.5, angle: 0.4)
+    #expect(try JSONDecoder().decode(Ellipse.self, from: JSONEncoder().encode(e)) == e)
+  }
+}

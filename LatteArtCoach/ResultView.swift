@@ -7,10 +7,14 @@ struct ResultView: View {
   /// The saved pour, for the user's rating.
   let pour: Pour?
   let onRescore: (Pattern) -> Void
+  /// Re-scores with a hand-placed cup outline.
+  /// Nil goes back to automatic detection.
+  let onAdjustCup: (LatteCore.Ellipse?) -> Void
   /// Nil when showing a pour from history.
   let onAgain: (() -> Void)?
   @State private var showOverlay = true
   @State private var selectedPattern: Pattern?
+  @State private var adjustingCup = false
 
   var body: some View {
     ScrollView {
@@ -18,6 +22,12 @@ struct ResultView: View {
         PourPhotoView(photo: photo, analysis: analysis, showOverlay: showOverlay)
           .onTapGesture { showOverlay.toggle() }
           .accessibilityLabel("Photo of your pour, tap to toggle the overlay")
+        Button { adjustingCup = true } label: {
+          Label("Cup outline wrong? Adjust it", systemImage: "circle.dashed")
+            .font(.footnote)
+        }
+        .tint(.crema)
+        .accessibilityIdentifier("adjust-cup")
         scoreHeader
         if let looks = resemblance {
           Button { rescore(looks) } label: {
@@ -68,6 +78,9 @@ struct ResultView: View {
       .padding()
     }
     .background(Color.milk)
+    .sheet(isPresented: $adjustingCup) {
+      CupAdjustView(photo: photo, analysis: analysis, isManual: pour?.manualCup != nil) { cup in onAdjustCup(cup) }
+    }
   }
 
   private func rescore(_ pattern: Pattern) { selectedPattern = pattern }

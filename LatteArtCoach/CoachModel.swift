@@ -37,7 +37,18 @@ final class CoachModel {
   /// milliseconds, so the result is swapped in place without a spinner.
   func rescore(as pattern: Pattern) async {
     guard case .result(let image, let previous, let pour) = state, previous.pattern != pattern, let pour else { return }
-    switch await PourAnalyzer.analyze(pour.photo, as: pattern) {
+    await reanalyze(image: image, pour: pour, as: pattern)
+  }
+
+  /// Re-scores with a cup outline the user placed by hand.
+  func adjustCup(_ cup: LatteCore.Ellipse?) async {
+    guard case .result(let image, let analysis, let pour?) = state else { return }
+    pour.manualCup = cup
+    await reanalyze(image: image, pour: pour, as: analysis.pattern)
+  }
+
+  private func reanalyze(image: UIImage, pour: Pour, as pattern: Pattern) async {
+    switch await PourAnalyzer.analyze(pour.photo, as: pattern, cup: pour.manualCup) {
     case .success(let analysis):
       pour.update(from: analysis)
       try? context?.save()

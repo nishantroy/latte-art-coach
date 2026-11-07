@@ -2,7 +2,7 @@ import Foundation
 
 /// An ellipse in image pixel coordinates. `angle` is the direction of the
 /// major axis in radians, measured from +x toward +y (image y points down).
-public struct Ellipse: Sendable, Equatable {
+public struct Ellipse: Sendable, Equatable, Codable {
   public var centerX: Double
   public var centerY: Double
   public var semiMajor: Double

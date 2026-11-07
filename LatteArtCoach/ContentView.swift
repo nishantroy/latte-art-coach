@@ -32,6 +32,7 @@ struct ContentView: View {
               pattern = newPattern
               Task { await model.rescore(as: newPattern) }
             },
+            onAdjustCup: { cup in Task { await model.adjustCup(cup) } },
             onAgain: { model.reset() })
         case .failed(let message):
           failure(message)

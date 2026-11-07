@@ -35,6 +35,9 @@ final class Pour {
   /// 1–5.
   var drinkRating: Int?
   var tastedNotes: [String] = []
+  /// The cup outline the user placed by hand (analysis-image pixels), used
+  /// instead of automatic detection.
+  var manualCupData: Data?
 
   init(photo: Data, analysis: PourAnalysis, date: Date = .now) {
     self.date = date
@@ -48,6 +51,11 @@ final class Pour {
   }
 
   var pattern: Pattern { Pattern(rawValue: patternRaw) ?? .tulip }
+
+  var manualCup: LatteCore.Ellipse? {
+    get { manualCupData.flatMap { try? JSONDecoder().decode(LatteCore.Ellipse.self, from: $0) } }
+    set { manualCupData = newValue.flatMap { try? JSONEncoder().encode($0) } }
+  }
 
   var savedCoaching: SavedCoaching? {
     get { coachingData.flatMap { try? JSONDecoder().decode(SavedCoaching.self, from: $0) } }
@@ -105,9 +113,9 @@ final class Pour {
 
 enum PourAnalyzer {
   /// Runs the analysis off the main thread.
-  static func analyze(_ data: Data, as pattern: Pattern) async -> Result<PourAnalysis, PourAnalysis.Failure> {
+  static func analyze(_ data: Data, as pattern: Pattern, cup: LatteCore.Ellipse? = nil) async -> Result<PourAnalysis, PourAnalysis.Failure> {
     await Task.detached(priority: .userInitiated) { () -> Result<PourAnalysis, PourAnalysis.Failure> in
-      do throws(PourAnalysis.Failure) { return .success(try PourAnalysis.analyze(imageData: data, pattern: pattern)) }
+      do throws(PourAnalysis.Failure) { return .success(try PourAnalysis.analyze(imageData: data, pattern: pattern, cup: cup)) }
       catch { return .failure(error) }
     }.value
   }
@@ -116,7 +124,7 @@ enum PourAnalyzer {
   @MainActor
   static func rescoreOutdated(_ pours: [Pour], context: ModelContext) async {
     for pour in pours where pour.analysisVersion < PourAnalysis.version {
-      if case .success(let analysis) = await analyze(pour.photo, as: pour.pattern) {
+      if case .success(let analysis) = await analyze(pour.photo, as: pour.pattern, cup: pour.manualCup) {
         pour.update(from: analysis)
       } else {
         pour.analysisVersion = PourAnalysis.version

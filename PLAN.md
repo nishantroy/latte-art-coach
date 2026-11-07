@@ -30,7 +30,7 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 | 2a | Cup detection: crema region scoring, ellipse fit for angled photos | Six real pours with eye-checked ellipses; timing test | Done |
 | 2b | Foam segmentation inside the cup, glare rejection, pattern axis and direction | Fixture axes eye-checked; synthetic patterns at known angles; timing test | Done |
 | 2c | Tulip metrics and score: centering, symmetry, contrast, proportion, texture, stack definition | Clear-cut parts of the hand ranking (3 > 4 > 5 > 2 ≈ 6 > 1) asserted | Done |
-| 3 | App flow: take or pick a photo, automatic cup detection, results with overlay, score breakdown and rule-based tips | XCUITest in the Simulator; installed on the iPhone 15 Pro | Done, except manual cup adjustment |
+| 3 | App flow: take or pick a photo, automatic cup detection, results with overlay, score breakdown and rule-based tips | XCUITest in the Simulator; installed on the iPhone 15 Pro | Done; manual cup adjustment added later (drag/pinch the outline on a result, saved per pour and used on re-scores) |
 | 4 | Foundation Models coaching from metrics, plus the rule-based fallback | Unit tests for the fallback; on-device check | Done as step 9 |
 | 5 | iOS 27 image observations | Xcode 27, on-device | Blocked: needs the iOS 27 SDK (Xcode 27); this Mac has Xcode 26.6 |
 | 6 | Camera inside the app: live cup and foam outline on frames about five times a second, framing hints (closer, center, flatter), no score until rated | `FramingTests` (real pours ready, sunset no cup, small cup); on-device check | Built; needs an on-device check |

@@ -40,18 +40,25 @@ public struct PourAnalysis: Sendable {
   /// re-scored with the current rules.
   public static let version = 4
 
-  public static func analyze(imageData: Data, pattern: Pattern) throws(Failure) -> PourAnalysis {
+  /// - Parameter cup: the cup outline placed by the user, in analysis-image
+  ///   pixels; nil to find it automatically.
+  public static func analyze(imageData: Data, pattern: Pattern, cup: Ellipse? = nil) throws(Failure) -> PourAnalysis {
     let start = ContinuousClock.now
     let image: RGBAImage
     do { image = try RGBAImage.load(data: imageData, maxDimension: analysisDimension) } catch { throw .unreadableImage }
-    return try analyze(image: image, pattern: pattern, start: start)
+    return try analyze(image: image, pattern: pattern, cup: cup, start: start)
   }
 
-  public static func analyze(image: RGBAImage, pattern: Pattern, start: ContinuousClock.Instant = .now) throws(Failure) -> PourAnalysis {
+  public static func analyze(image: RGBAImage, pattern: Pattern, cup manual: Ellipse? = nil,
+                             start: ContinuousClock.Instant = .now) throws(Failure) -> PourAnalysis {
     let lab = LabImage(image)
-    let cup: CupDetector.Result
-    do { cup = try CupDetector.detect(lab) } catch { throw .noCoffeeFound }
-    let surface = CupSurface(lab: lab, ellipse: cup.ellipse)
+    let ellipse: Ellipse
+    if let manual {
+      ellipse = manual
+    } else {
+      do { ellipse = try CupDetector.detect(lab).ellipse } catch { throw .noCoffeeFound }
+    }
+    let surface = CupSurface(lab: lab, ellipse: ellipse)
     let foam = FoamSegmenter.segment(surface)
     guard foam.coverage > 0.03, FoamSegmenter.foamStandsOut(surface, mask: foam.mask),
       var axis = PatternAxis.find(surface: surface, mask: foam.mask)
@@ -66,7 +73,7 @@ public struct PourAnalysis: Sendable {
     let tip = surface.imagePoint(gridX: extent.tip.x, gridY: extent.tip.y)
     let tips = Coach.tips(metrics: metrics, score: score, offsetAlongAxis: extent.offsetAlongAxis)
     return PourAnalysis(
-      imageWidth: image.width, imageHeight: image.height, cup: cup.ellipse,
+      imageWidth: image.width, imageHeight: image.height, cup: ellipse,
       foamOverlay: foamOverlay(surface: surface, mask: foam.mask, width: image.width, height: image.height),
       stem: ImagePoint(x: stem.x, y: stem.y), tip: ImagePoint(x: tip.x, y: tip.y),
       pattern: pattern, resembles: Pattern.resembling(metrics),

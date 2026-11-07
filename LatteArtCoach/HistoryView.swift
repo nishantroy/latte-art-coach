@@ -153,6 +153,9 @@ struct PourDetailView: View {
       if let (photo, analysis) = shown {
         ResultView(photo: photo, analysis: analysis, pour: pour, onRescore: { pattern in
           Task { await load(as: pattern) }
+        }, onAdjustCup: { cup in
+          pour.manualCup = cup
+          Task { await load(as: pour.pattern) }
         }, onAgain: nil)
       } else if let failure {
         ContentUnavailableView("Couldn't score this one", systemImage: "cup.and.saucer", description: Text(failure))
@@ -169,7 +172,7 @@ struct PourDetailView: View {
   private func load(as pattern: Pattern) async {
     let data = pour.photo
     let photo = await Task.detached { PhotoRendition(data: data) }.value
-    switch await PourAnalyzer.analyze(data, as: pattern) {
+    switch await PourAnalyzer.analyze(data, as: pattern, cup: pour.manualCup) {
     case .success(let analysis):
       pour.update(from: analysis)
       try? context.save()
