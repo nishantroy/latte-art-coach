@@ -61,10 +61,12 @@ public struct PourScore: Sendable, Equatable {
       // point. Thin crema lines barely dent the fill, so separate stacks
       // also count. Lobe ranges: clean drawn hearts ~0.01, the user's
       // flat-topped heart-01 0.038, a shield shape ~0.10.
+      // Without lobes it isn't a heart, so fill and point only count once
+      // there's some sign of them.
       let solid = m.stackCount <= 1 ? 1.0 : m.stackCount == 2 ? 0.6 : 0.3
-      c[.definition] = solid * (0.15 * ramp(m.fill, from: 0.75, to: 0.92)
-        + 0.25 * ramp(m.tipTaper, from: 0.70, to: 0.35)
-        + 0.60 * ramp(m.lobeRoundness, from: 0.07, to: 0.015))
+      let lobes = ramp(m.lobeRoundness, from: 0.07, to: 0.015)
+      c[.definition] = solid * (0.60 * lobes + min(1, lobes / 0.3)
+        * (0.15 * ramp(m.fill, from: 0.75, to: 0.92) + 0.25 * ramp(m.tipTaper, from: 0.70, to: 0.35)))
     case .tulip:
       // About 60–78% of the diameter lengthwise and at least 45% across;
       // overlong, narrow patterns mean the pour drifted.
@@ -90,17 +92,27 @@ public struct PourScore: Sendable, Equatable {
   /// Contrast and texture: how the milk and espresso came out.
   static let milkComponents: Set<Component> = [.contrast, .texture]
 
+  /// Symmetry and proportion: qualities of a pattern, given there is one.
+  static let patternQualities: Set<Component> = [.symmetry, .proportion]
+  /// A definition score at which the foam reads as the pattern. Below it,
+  /// symmetry and proportion fade to 40% of their share.
+  static let recognizablePattern = 0.35
+
   /// A shape score at which the milk earns its full share.
   static let recognizableShape = 0.6
 
   /// The weighted mean, except the milk's share fades out below a
   /// recognizable shape: a blob with silky milk scores as a blob.
   static func combine(_ c: [Component: Double], pattern: Pattern) -> Double {
+    // Symmetry and proportion describe the pattern, so they only count in
+    // full once the foam reads as one: a symmetric blob is still a blob.
+    let reads = 0.4 + 0.6 * min(1, c[.definition]! / recognizablePattern)
     var shape = 0.0, shapeWeight = 0.0, milk = 0.0
     for component in Component.allCases {
       let w = component.weight(for: pattern)
-      if milkComponents.contains(component) { milk += w * c[component]! }
-      else { shape += w * c[component]!; shapeWeight += w }
+      let value = patternQualities.contains(component) ? c[component]! * reads : c[component]!
+      if milkComponents.contains(component) { milk += w * value }
+      else { shape += w * value; shapeWeight += w }
     }
     return shape + milk * min(1, shape / shapeWeight / recognizableShape)
   }

@@ -104,3 +104,16 @@ import Testing
     #expect(heart.score.components[.definition]! < 0.85)
   }
 }
+
+@Suite struct LoblessHeartTests {
+  /// An off-center, lopsided blob with no lobes, poured as a heart, on
+  /// smooth milk with crisp contrast. Rated 2/10; good milk and a
+  /// tidy outline once lifted it to 55.
+  @Test func scoresLow() throws {
+    let url = try #require(Bundle.module.url(forResource: "heart-02-blob", withExtension: "jpg", subdirectory: "Fixtures/hearts"))
+    let result = try PourAnalysis.analyze(imageData: Data(contentsOf: url), pattern: .heart)
+    #expect(result.score.components[.definition]! < 0.1)
+    #expect(result.score.components[.contrast]! > 0.8, "the milk itself was good")
+    #expect((10...30).contains(result.score.overall), "overall \(result.score.overall)")
+  }
+}

@@ -73,21 +73,22 @@ import Testing
     #expect(PourScore(ideal, pattern: pattern).overall == 100)
   }
 
-  /// Smooth milk and crisp contrast can't carry a shapeless pour; once the
-  /// shape is recognizable they count in full.
+  /// Smooth milk, crisp contrast and a tidy oval can't carry a pour that
+  /// doesn't read as the pattern; once it does, the plain weighted mean.
   @Test(arguments: Pattern.allCases)
-  func greatMilkDoesNotLiftAPoorShape(_ pattern: Pattern) {
-    let milkShare = PourScore.milkComponents.reduce(0) { $0 + $1.weight(for: pattern) }
-    func score(shape: Double, milk: Double) -> Double {
-      PourScore.combine(Dictionary(uniqueKeysWithValues: PourScore.Component.allCases.map {
-        ($0, PourScore.milkComponents.contains($0) ? milk : shape)
-      }), pattern: pattern)
-    }
-    // A blob: milk adds a third of its share, not all of it.
-    #expect(abs(score(shape: 0.2, milk: 1) - ((1 - milkShare) * 0.2 + milkShare / 3)) < 1e-9)
-    #expect(score(shape: 0, milk: 1) == 0)
-    // A recognizable shape gets the plain weighted mean.
-    #expect(abs(score(shape: 0.7, milk: 0.5) - ((1 - milkShare) * 0.7 + milkShare * 0.5)) < 1e-9)
+  func goodMilkAndATidyBlobDoNotScoreWell(_ pattern: Pattern) {
+    func score(_ c: [PourScore.Component: Double]) -> Double { PourScore.combine(c, pattern: pattern) }
+    // Off-center, symmetric-ish, right size, no pattern, great milk.
+    let blob: [PourScore.Component: Double] = [.centering: 0.2, .symmetry: 0.65, .proportion: 0.9,
+                                               .definition: 0, .contrast: 0.97, .texture: 0.9]
+    #expect(score(blob) < 0.3, "\(score(blob))")
+    // The same milk adds less to the blob than to a recognizable pattern.
+    var good = blob; good[.centering] = 0.9; good[.definition] = 0.9
+    var goodPoorMilk = good; goodPoorMilk[.contrast] = 0; goodPoorMilk[.texture] = 0
+    var blobPoorMilk = blob; blobPoorMilk[.contrast] = 0; blobPoorMilk[.texture] = 0
+    #expect(score(blob) - score(blobPoorMilk) < score(good) - score(goodPoorMilk))
+    let mean = PourScore.Component.allCases.reduce(0) { $0 + $1.weight(for: pattern) * good[$1]! }
+    #expect(abs(score(good) - mean) < 1e-9)
   }
 
   @Test(arguments: Pattern.allCases)
