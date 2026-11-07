@@ -22,6 +22,11 @@ public struct BrewDetails: Sendable, Equatable, Codable {
   public var beanName: String?
   public var roaster: String?
   public var roastDate: Date?
+  /// The beans' character, from the bag: e.g. "Ethiopia, washed, light roast".
+  public var beanOrigin: String?
+  public var beanProcess: String?
+  public var roastLevel: BeanLabel.RoastLevel?
+  public var tastingNotes: [String] = []
   /// Free text: grinders use numbers, clicks or letters.
   public var grindSetting: String?
   public var doseGrams: Double?
@@ -29,11 +34,17 @@ public struct BrewDetails: Sendable, Equatable, Codable {
   public var shotSeconds: Double?
   public var milk: Milk?
 
-  public init(beanName: String? = nil, roaster: String? = nil, roastDate: Date? = nil, grindSetting: String? = nil,
-              doseGrams: Double? = nil, yieldGrams: Double? = nil, shotSeconds: Double? = nil, milk: Milk? = nil) {
+  public init(beanName: String? = nil, roaster: String? = nil, roastDate: Date? = nil, beanOrigin: String? = nil,
+              beanProcess: String? = nil, roastLevel: BeanLabel.RoastLevel? = nil, tastingNotes: [String] = [],
+              grindSetting: String? = nil, doseGrams: Double? = nil, yieldGrams: Double? = nil,
+              shotSeconds: Double? = nil, milk: Milk? = nil) {
     self.beanName = beanName
     self.roaster = roaster
     self.roastDate = roastDate
+    self.beanOrigin = beanOrigin
+    self.beanProcess = beanProcess
+    self.roastLevel = roastLevel
+    self.tastingNotes = tastingNotes
     self.grindSetting = grindSetting
     self.doseGrams = doseGrams
     self.yieldGrams = yieldGrams

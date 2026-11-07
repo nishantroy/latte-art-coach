@@ -84,6 +84,10 @@ public enum CoachingBrief {
     if let name = brew.beanName {
       var beans = "- Beans: \(name)"
       if let roaster = brew.roaster { beans += " from \(roaster)" }
+      let character = [brew.beanOrigin, brew.beanProcess?.lowercased(), brew.roastLevel.map { "\($0.displayName.lowercased()) roast" }]
+        .compactMap { $0 }
+      if !character.isEmpty { beans += " (\(character.joined(separator: ", ")))" }
+      if !brew.tastingNotes.isEmpty { beans += ", tasting notes \(brew.tastingNotes.joined(separator: ", "))" }
       if let days = brew.daysOffRoast(on: date) { beans += ", roasted \(days) day\(days == 1 ? "" : "s") before this pour" }
       lines.append(beans + ".")
     } else if let days = brew.daysOffRoast(on: date) {

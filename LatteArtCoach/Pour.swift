@@ -55,7 +55,9 @@ final class Pour {
   }
 
   var brew: BrewDetails {
-    BrewDetails(beanName: bean?.name, roaster: bean?.roaster, roastDate: bean?.roastDate, grindSetting: grindSetting,
+    BrewDetails(beanName: bean?.name, roaster: bean?.roaster, roastDate: bean?.roastDate, beanOrigin: bean?.origin,
+                beanProcess: bean?.process, roastLevel: bean?.roastLevel, tastingNotes: bean?.tastingNotes ?? [],
+                grindSetting: grindSetting,
                 doseGrams: doseGrams, yieldGrams: yieldGrams, shotSeconds: shotSeconds, milk: milk)
   }
 

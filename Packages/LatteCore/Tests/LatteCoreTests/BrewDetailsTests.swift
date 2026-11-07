@@ -36,6 +36,14 @@ import Testing
     #expect(!bare.contains("How the drink was made"))
   }
 
+  @Test func coachingBriefDescribesTheBeans() throws {
+    let a = try PourAnalysis.analyze(imageData: Data(contentsOf: HeartPhotoTests.url), pattern: .heart)
+    let brew = BrewDetails(beanName: "Hambela", roaster: "Onyx", beanOrigin: "Ethiopia", beanProcess: "Washed",
+                           roastLevel: .light, tastingNotes: ["jasmine", "peach"])
+    let prompt = CoachingBrief.prompt(pattern: .heart, score: a.score, tips: a.tips, history: nil, rating: nil, brew: brew)
+    #expect(prompt.contains("- Beans: Hambela from Onyx (Ethiopia, washed, light roast), tasting notes jasmine, peach."))
+  }
+
   @Test func exportCarriesBrewDetails() throws {
     let record = PourRecord(date: .now, pattern: .tulip, score: 70, components: [:], rating: 6,
                             brew: BrewDetails(grindSetting: "2.5", doseGrams: 18))

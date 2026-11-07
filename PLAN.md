@@ -38,7 +38,7 @@ You say which pattern you poured (heart, tulip or rosetta), then take or pick a 
 | 8 | Pour history: every scored pour saved (SwiftData, original photo kept), your 1–10 rating, progress chart and trends per pattern, re-score on analysis version bumps, export of photos + `pours.json` | `ProgressSummary` and export unit tests; UI test rates a pour and reopens it from history | Done |
 | 9 | AI coaching with Foundation Models, using the current pour plus history; rule-based tips as fallback; follow-up questions | Prompt-building unit tests; UI test sees coaching or the fallback; on-device check pending | Built; needs an on-device check (Apple Intelligence is off on the dev Mac) |
 | 10 | Brew details on each pour (beans, dose, yield, shot time, grind, milk), started from the last pour; beans list; brew facts in coaching and export | `BrewDetails` and coaching brief unit tests; on-device check of the data upgrade | Done |
-| 11 | Bean library by scanning the bag label (on-device text recognition + model extraction; roast level guessed from tasting notes and marked as a guess) | Extraction unit tests on sample labels; on-device | |
+| 11 | Bean library by scanning the bag label (on-device text recognition + model extraction; roast level guessed from tasting notes and marked as a guess) | Parser unit tests on sample label text; end-to-end recognition of a drawn label; on-device check with real bags pending | Built; needs real bag photos |
 | 12 | Dial-in coaching from shot numbers (ratio, time) and from your own pours' history | Rule unit tests | |
 | 13 | Taste notes and bean ratings over time; preference summary | | |
 | 7 | Remove the Expo web MVP from the repo | Clean tree; `scripts/test.sh` | Done |
