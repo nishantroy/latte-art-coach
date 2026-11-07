@@ -16,6 +16,6 @@ struct LatteArtCoachApp: App {
       ContentView()
     }
     // UI tests start from an empty history that isn't saved.
-    .modelContainer(for: Pour.self, inMemory: ProcessInfo.processInfo.arguments.contains("-uitest"))
+    .modelContainer(for: [Pour.self, Bean.self], inMemory: ProcessInfo.processInfo.arguments.contains("-uitest"))
   }
 }

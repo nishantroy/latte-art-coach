@@ -198,6 +198,7 @@ struct CoachingSection: View {
       .map(\.record)
     return CoachingBrief.prompt(
       pattern: pattern, score: analysis.score, tips: analysis.tips,
-      history: ProgressSummary(records: earlier, pattern: pattern), rating: pour?.rating)
+      history: ProgressSummary(records: earlier, pattern: pattern), rating: pour?.rating,
+      brew: pour?.brew, date: pour?.date ?? .now)
   }
 }

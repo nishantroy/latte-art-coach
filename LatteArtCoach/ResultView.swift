@@ -31,6 +31,7 @@ struct ResultView: View {
           .accessibilityIdentifier("resemblance-note")
         }
         CoachingSection(analysis: analysis, pour: pour).card()
+        if let pour { BrewCard(pour: pour).card() }
         breakdown.card()
         if let pour {
           VStack(alignment: .leading, spacing: 10) {

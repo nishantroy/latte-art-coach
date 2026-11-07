@@ -21,12 +21,15 @@ public enum CoachingBrief {
   ///   - history: summary of the user's earlier pours of this pattern,
   ///     excluding this one.
   public static func prompt(
-    pattern: Pattern, score: PourScore, tips: [CoachingTip], history: ProgressSummary?, rating: Int?
+    pattern: Pattern, score: PourScore, tips: [CoachingTip], history: ProgressSummary?, rating: Int?,
+    brew: BrewDetails? = nil, date: Date = .now
   ) -> String {
     var lines: [String] = []
     lines.append("Pattern the barista poured: \(pattern.noun).")
     lines.append("Score: \(score.overall) out of 100.")
     if let rating { lines.append("The barista rated this pour \(rating) out of 10 themselves.") }
+
+    if let brew, !brew.isEmpty { lines += brewLines(brew, date: date) }
 
     lines.append("")
     lines.append("Parts of the score (100 is perfect), the ones costing the most points first:")
@@ -71,6 +74,22 @@ public enum CoachingBrief {
       otherwise leave the progress note empty.
       """)
     return lines.joined(separator: "\n")
+  }
+
+  /// The drink behind the pour, in plain words. Only logged facts appear.
+  static func brewLines(_ brew: BrewDetails, date: Date) -> [String] {
+    var lines = ["", "How the drink was made:"]
+    if let shot = brew.shotSummary { lines.append("- Espresso shot: \(shot).") }
+    if let milk = brew.milk { lines.append("- Milk: \(milk.displayName.lowercased()).") }
+    if let name = brew.beanName {
+      var beans = "- Beans: \(name)"
+      if let roaster = brew.roaster { beans += " from \(roaster)" }
+      if let days = brew.daysOffRoast(on: date) { beans += ", roasted \(days) day\(days == 1 ? "" : "s") before this pour" }
+      lines.append(beans + ".")
+    } else if let days = brew.daysOffRoast(on: date) {
+      lines.append("- Beans roasted \(days) day\(days == 1 ? "" : "s") before this pour.")
+    }
+    return lines.count > 2 ? lines : []
   }
 
   static func label(_ component: PourScore.Component, _ pattern: Pattern) -> String {

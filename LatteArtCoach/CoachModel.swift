@@ -54,6 +54,9 @@ final class CoachModel {
     switch (outcome, photo) {
     case (.success(let analysis), let photo?):
       let pour = Pour(photo: data, analysis: analysis)
+      var latest = FetchDescriptor<Pour>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+      latest.fetchLimit = 1
+      if let previous = try? context?.fetch(latest).first { pour.copyBrew(from: previous) }
       context?.insert(pour)
       try? context?.save()
       state = .rating(photo.image, analysis, pour)

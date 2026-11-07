@@ -19,6 +19,13 @@ final class Pour {
   @Attribute(.externalStorage) var thumbnail: Data?
   /// `PourAnalysis.version` the score was computed with.
   var analysisVersion: Int
+  // How the drink was made. All optional; new pours start from the last pour's.
+  var bean: Bean?
+  var grindSetting: String?
+  var doseGrams: Double?
+  var yieldGrams: Double?
+  var shotSeconds: Double?
+  var milkRaw: String?
 
   init(photo: Data, analysis: PourAnalysis, date: Date = .now) {
     self.date = date
@@ -33,6 +40,27 @@ final class Pour {
 
   var pattern: Pattern { Pattern(rawValue: patternRaw) ?? .tulip }
 
+  var milk: BrewDetails.Milk? {
+    get { milkRaw.flatMap(BrewDetails.Milk.init(rawValue:)) }
+    set { milkRaw = newValue?.rawValue }
+  }
+
+  var brew: BrewDetails {
+    BrewDetails(beanName: bean?.name, roaster: bean?.roaster, roastDate: bean?.roastDate, grindSetting: grindSetting,
+                doseGrams: doseGrams, yieldGrams: yieldGrams, shotSeconds: shotSeconds, milk: milk)
+  }
+
+  /// Starts this pour's brew details from another pour's: most mornings
+  /// only the shot time changes.
+  func copyBrew(from other: Pour) {
+    bean = other.bean
+    grindSetting = other.grindSetting
+    doseGrams = other.doseGrams
+    yieldGrams = other.yieldGrams
+    shotSeconds = other.shotSeconds
+    milkRaw = other.milkRaw
+  }
+
   func update(from analysis: PourAnalysis) {
     patternRaw = analysis.pattern.rawValue
     score = analysis.score.overall
@@ -46,7 +74,7 @@ final class Pour {
       components: Dictionary(uniqueKeysWithValues: componentScores.compactMap { key, value in
         PourScore.Component(rawValue: key).map { ($0, value) }
       }),
-      rating: rating)
+      rating: rating, brew: brew.isEmpty ? nil : brew)
   }
 }
 
