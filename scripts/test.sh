@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Runs every check: LatteCore unit tests, then the app's UI tests in a simulator.
-#   scripts/test.sh                       # iPhone 17 simulator
-#   SIM_NAME="iPhone Air" scripts/test.sh
-#   SKIP_UI=1 scripts/test.sh             # package tests only
+# Runs the LatteCore unit tests, and the app's UI tests only when asked.
+# The Simulator uses a lot of memory, so it never starts unless UI=1 is set.
+#   scripts/test.sh                       # unit tests only (no Simulator)
+#   UI=1 scripts/test.sh                  # also UI tests on the iPhone 17 simulator
+#   UI=1 SIM_NAME="iPhone Air" scripts/test.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
@@ -18,7 +19,10 @@ mkdir -p "$CACHE"
 echo "== LatteCore unit tests"
 swift test -c release --package-path Packages/LatteCore --scratch-path "$CACHE/spm-LatteCore"
 
-[ "${SKIP_UI:-}" = 1 ] && exit 0
+if [ "${UI:-}" != 1 ]; then
+  echo "== Skipping UI tests (set UI=1 to run them in the Simulator)"
+  exit 0
+fi
 
 echo "== Generate Xcode project"
 xcodegen generate --quiet
@@ -44,6 +48,8 @@ xcodebuild test \
   -resultBundlePath "$OUT/result-$(date +%Y%m%d-%H%M%S).xcresult" > "$LOG" 2>&1
 STATUS=$?
 set -e
+# Free the Simulator's memory as soon as the tests are done.
+xcrun simctl shutdown "$UDID" 2>/dev/null || true
 grep -E "Test Case|error:|ANALYSIS|\*\* TEST" "$LOG" || tail -20 "$LOG"
 R="$(ls -td "$OUT"/result-*.xcresult | head -1)"
 rm -rf "$OUT/screenshots" && xcrun xcresulttool export attachments --path "$R" --output-path "$OUT/screenshots" >/dev/null 2>&1 || true

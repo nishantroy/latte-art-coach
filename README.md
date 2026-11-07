@@ -5,8 +5,8 @@ A native iOS app that scores your latte art and coaches your next pour. Pick the
 It needs Xcode 26 or later and XcodeGen (`brew install xcodegen`).
 
 ```bash
-scripts/test.sh                 # LatteCore unit tests, then UI tests on the iPhone 17 simulator
-SKIP_UI=1 scripts/test.sh       # LatteCore unit tests only
+scripts/test.sh                 # LatteCore unit tests (never starts the Simulator)
+UI=1 scripts/test.sh            # also UI tests on the iPhone 17 simulator (memory-heavy)
 scripts/install-device.sh       # optimized build, installed and launched on a connected iPhone
 xcodegen generate && open LatteArtCoach.xcodeproj
 ```
