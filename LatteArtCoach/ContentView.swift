@@ -39,13 +39,23 @@ struct ContentView: View {
       .navigationTitle(resultTitle)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        if case .idle = model.state {
-          NavigationLink {
-            HistoryView()
-          } label: {
-            Label("History", systemImage: "clock.arrow.circlepath")
+        // Every screen past the start one can go straight home; the pour is
+        // already saved, so nothing is lost.
+        if showsDone {
+          ToolbarItem(placement: .topBarLeading) {
+            Button("Done") { model.reset() }
+              .accessibilityIdentifier("done")
           }
-          .accessibilityIdentifier("history")
+        }
+        if !isAnalyzing {
+          ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink {
+              HistoryView()
+            } label: {
+              Label("History", systemImage: "clock.arrow.circlepath")
+            }
+            .accessibilityIdentifier("history")
+          }
         }
       }
     }
@@ -128,6 +138,18 @@ struct ContentView: View {
     }
     let direction = recent > earlier ? "up from" : recent < earlier ? "down from" : "same as"
     return "Last \(summary.recentCount) \(pattern.noun)s: \(recent), \(direction) \(earlier) before"
+  }
+
+  private var showsDone: Bool {
+    switch model.state {
+    case .rating, .result, .failed: true
+    case .idle, .analyzing: false
+    }
+  }
+
+  private var isAnalyzing: Bool {
+    if case .analyzing = model.state { return true }
+    return false
   }
 
   private var resultTitle: String {
