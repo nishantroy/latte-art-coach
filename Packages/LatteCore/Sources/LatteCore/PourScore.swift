@@ -1,9 +1,10 @@
 import Foundation
 
 /// A 0–100 score built only from measured geometry. Each component maps one
-/// metric onto 0...1 with fixed, documented ranges; the overall score is a
-/// weighted mean whose weights depend on the pattern. Nothing here is learned
-/// or model-generated.
+/// metric onto 0...1 with fixed, documented ranges, weighted by pattern.
+/// Contrast and texture judge the milk and espresso, not the art, so they
+/// only count in full once the shape is recognizable: great milk can't lift
+/// a shapeless pour. Nothing here is learned or model-generated.
 public struct PourScore: Sendable, Equatable {
   public enum Component: String, CaseIterable, Sendable, Codable {
     /// `definition` is the pattern's signature: a solid heart with a clean
@@ -83,6 +84,24 @@ public struct PourScore: Sendable, Equatable {
       c[.definition] = 0.5 * ramp(Double(m.stackCount), from: 3, to: 7) + 0.5 * ramp(m.stackThickness, from: 0.22, to: 0.12)
     }
     components = c
-    overall = Int((Component.allCases.reduce(0) { $0 + $1.weight(for: pattern) * c[$1]! } * 100).rounded())
+    overall = Int((PourScore.combine(c, pattern: pattern) * 100).rounded())
+  }
+
+  /// Contrast and texture: how the milk and espresso came out.
+  static let milkComponents: Set<Component> = [.contrast, .texture]
+
+  /// A shape score at which the milk earns its full share.
+  static let recognizableShape = 0.6
+
+  /// The weighted mean, except the milk's share fades out below a
+  /// recognizable shape: a blob with silky milk scores as a blob.
+  static func combine(_ c: [Component: Double], pattern: Pattern) -> Double {
+    var shape = 0.0, shapeWeight = 0.0, milk = 0.0
+    for component in Component.allCases {
+      let w = component.weight(for: pattern)
+      if milkComponents.contains(component) { milk += w * c[component]! }
+      else { shape += w * c[component]!; shapeWeight += w }
+    }
+    return shape + milk * min(1, shape / shapeWeight / recognizableShape)
   }
 }

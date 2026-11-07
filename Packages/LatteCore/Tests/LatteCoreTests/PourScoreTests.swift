@@ -73,6 +73,23 @@ import Testing
     #expect(PourScore(ideal, pattern: pattern).overall == 100)
   }
 
+  /// Smooth milk and crisp contrast can't carry a shapeless pour; once the
+  /// shape is recognizable they count in full.
+  @Test(arguments: Pattern.allCases)
+  func greatMilkDoesNotLiftAPoorShape(_ pattern: Pattern) {
+    let milkShare = PourScore.milkComponents.reduce(0) { $0 + $1.weight(for: pattern) }
+    func score(shape: Double, milk: Double) -> Double {
+      PourScore.combine(Dictionary(uniqueKeysWithValues: PourScore.Component.allCases.map {
+        ($0, PourScore.milkComponents.contains($0) ? milk : shape)
+      }), pattern: pattern)
+    }
+    // A blob: milk adds a third of its share, not all of it.
+    #expect(abs(score(shape: 0.2, milk: 1) - ((1 - milkShare) * 0.2 + milkShare / 3)) < 1e-9)
+    #expect(score(shape: 0, milk: 1) == 0)
+    // A recognizable shape gets the plain weighted mean.
+    #expect(abs(score(shape: 0.7, milk: 0.5) - ((1 - milkShare) * 0.7 + milkShare * 0.5)) < 1e-9)
+  }
+
   @Test(arguments: Pattern.allCases)
   func weightsSumToOne(_ pattern: Pattern) {
     #expect(abs(PourScore.Component.allCases.reduce(0) { $0 + $1.weight(for: pattern) } - 1) < 1e-9)
