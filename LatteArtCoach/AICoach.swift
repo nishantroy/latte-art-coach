@@ -23,16 +23,45 @@ struct AITip {
   var detail: String
 }
 
-/// Streams coaching for one pour from the on-device model, and answers
-/// follow-up questions in the same conversation.
+/// Coaching as saved with a pour, so reopening it doesn't run the model again.
+struct SavedCoaching: Codable, Equatable {
+  struct Tip: Codable, Equatable {
+    var title: String
+    var detail: String
+  }
+  var focus: String
+  var tips: [Tip]
+  var progress: String
+
+  init(focus: String, tips: [Tip], progress: String) {
+    self.focus = focus
+    self.tips = tips
+    self.progress = progress
+  }
+
+  init(_ partial: AICoaching.PartiallyGenerated) {
+    focus = partial.focus ?? ""
+    tips = (partial.tips ?? []).map { Tip(title: $0.title ?? "", detail: $0.detail ?? "") }
+    progress = partial.progress ?? ""
+  }
+
+  /// As plain text, to remind the model what it said when answering a
+  /// follow-up question later.
+  var text: String {
+    ([focus] + tips.map { "\($0.title): \($0.detail)" } + (progress.isEmpty ? [] : [progress])).joined(separator: "\n")
+  }
+}
+
+/// Streams coaching for one pour from the on-device model (or shows the
+/// saved coaching), and answers follow-up questions.
 @MainActor @Observable
 final class AICoach {
   enum Phase {
     /// The model can't run; the rule-based tips are shown, with this note.
     case unavailable(note: String?)
     case thinking
-    case writing(AICoaching.PartiallyGenerated)
-    case done(AICoaching.PartiallyGenerated)
+    case writing(SavedCoaching)
+    case done(SavedCoaching)
     /// Generation failed; fall back to the rule-based tips.
     case failed
   }
@@ -41,37 +70,56 @@ final class AICoach {
   private(set) var answer: String?
   private(set) var isAnswering = false
   private var session: LanguageModelSession?
+  private var prompt = ""
 
-  func start(prompt: String) async {
+  /// Shows `saved` when it was written from this same prompt; otherwise
+  /// asks the model and returns the new coaching for saving.
+  func start(prompt: String, saved: SavedCoaching?) async -> SavedCoaching? {
+    self.prompt = prompt
+    session = nil
+    answer = nil
+    if let saved {
+      phase = .done(saved)
+      return nil
+    }
     switch SystemLanguageModel.default.availability {
     case .available: break
     case .unavailable(.appleIntelligenceNotEnabled):
       phase = .unavailable(note: "Turn on Apple Intelligence in Settings for coaching written for your pours.")
-      return
+      return nil
     case .unavailable(.modelNotReady):
       phase = .unavailable(note: "Apple Intelligence is still getting ready. Built-in tips for now.")
-      return
+      return nil
     case .unavailable:
       phase = .unavailable(note: nil)
-      return
+      return nil
     }
     let session = LanguageModelSession(instructions: CoachingBrief.instructions)
     self.session = session
-    answer = nil
     phase = .thinking
     do {
-      var latest: AICoaching.PartiallyGenerated?
+      var latest: SavedCoaching?
       for try await snapshot in session.streamResponse(to: prompt, generating: AICoaching.self) {
-        latest = snapshot.content
-        phase = .writing(snapshot.content)
+        latest = SavedCoaching(snapshot.content)
+        phase = .writing(latest!)
       }
-      phase = latest.map { .done($0) } ?? .failed
+      guard let latest, !latest.focus.isEmpty else { phase = .failed; return nil }
+      phase = .done(latest)
+      return latest
     } catch {
       phase = .failed
+      return nil
     }
   }
 
   func ask(_ question: String) async {
+    var question = question
+    if session == nil, case .done(let saved) = phase {
+      // Saved coaching: start a conversation that knows the facts and what
+      // was already said.
+      session = LanguageModelSession(instructions: CoachingBrief.instructions)
+      question = "\(prompt)\n\nYou already gave this coaching:\n\(saved.text)\n\nThe barista asks: \(question)"
+    }
     guard let session, !session.isResponding else { return }
     isAnswering = true
     answer = ""
@@ -120,8 +168,15 @@ struct CoachingSection: View {
         if let note { Text(note).font(.footnote).foregroundStyle(.secondary) }
       }
     }
-    .task(id: "\(analysis.pattern.rawValue)-\(analysis.score.overall)") {
-      await coach.start(prompt: prompt())
+    .task(id: taskKey) {
+      let prompt = prompt()
+      // Reuse saved coaching when it was written from exactly these facts.
+      let saved = pour?.coachingPrompt == prompt ? pour?.savedCoaching : nil
+      if let fresh = await coach.start(prompt: prompt, saved: saved), let pour {
+        pour.savedCoaching = fresh
+        pour.coachingPrompt = prompt
+        try? context.save()
+      }
     }
   }
 
@@ -132,21 +187,26 @@ struct CoachingSection: View {
     }
   }
 
+  /// Changes whenever the facts given to the model could change.
+  private var taskKey: String {
+    "\(analysis.pattern.rawValue)-\(analysis.score.overall)-\(pour?.rating ?? 0)-\(String(describing: pour?.brew))"
+  }
+
   @ViewBuilder
-  private func written(_ coaching: AICoaching.PartiallyGenerated) -> some View {
-    if let focus = coaching.focus, !focus.isEmpty {
+  private func written(_ coaching: SavedCoaching) -> some View {
+    let focus = coaching.focus
+    if !focus.isEmpty {
       Text(focus)
         .font(.body.weight(.semibold))
         .padding(.leading, 10)
         .overlay(alignment: .leading) { Capsule().fill(Color.measure).frame(width: 3) }
         .accessibilityIdentifier("coach-focus")
     }
-    if let tips = coaching.tips {
-      ForEach(Array(tips.enumerated()), id: \.offset) { _, tip in
-        card(title: tip.title ?? "", detail: tip.detail ?? "")
-      }
+    ForEach(Array(coaching.tips.enumerated()), id: \.offset) { _, tip in
+      card(title: tip.title, detail: tip.detail)
     }
-    if let progress = coaching.progress, !progress.isEmpty {
+    if !coaching.progress.isEmpty {
+      let progress = coaching.progress
       Label(progress, systemImage: "chart.line.uptrend.xyaxis").font(.subheadline).foregroundStyle(.secondary)
     }
     if case .done = coach.phase { askBox }

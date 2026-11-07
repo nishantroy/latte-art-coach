@@ -26,6 +26,10 @@ final class Pour {
   var yieldGrams: Double?
   var shotSeconds: Double?
   var milkRaw: String?
+  /// The model's coaching and the exact facts it was written from; reused
+  /// while the facts are unchanged.
+  var coachingData: Data?
+  var coachingPrompt: String?
 
   init(photo: Data, analysis: PourAnalysis, date: Date = .now) {
     self.date = date
@@ -39,6 +43,11 @@ final class Pour {
   }
 
   var pattern: Pattern { Pattern(rawValue: patternRaw) ?? .tulip }
+
+  var savedCoaching: SavedCoaching? {
+    get { coachingData.flatMap { try? JSONDecoder().decode(SavedCoaching.self, from: $0) } }
+    set { coachingData = newValue.flatMap { try? JSONEncoder().encode($0) } }
+  }
 
   var milk: BrewDetails.Milk? {
     get { milkRaw.flatMap(BrewDetails.Milk.init(rawValue:)) }

@@ -24,11 +24,7 @@ struct HistoryView: View {
         Section("Progress") { ProgressSection(pours: shown, summary: summary) }
         Section("Pours") {
           ForEach(shown) { pour in
-            NavigationLink {
-              PourDetailView(pour: pour)
-            } label: {
-              PourRow(pour: pour)
-            }
+            NavigationLink(value: Route.pour(pour)) { PourRow(pour: pour) }
           }
           .onDelete { offsets in
             for index in offsets { context.delete(shown[index]) }
@@ -45,12 +41,15 @@ struct HistoryView: View {
     .background(Color.milk)
     .navigationTitle("History")
     .toolbar {
+      DoneButton()
+      ToolbarItem(placement: .topBarTrailing) {
       Button {
         export = try? ExportFiles(pours: pours)
       } label: {
         Label("Export", systemImage: "square.and.arrow.up")
       }
       .disabled(pours.isEmpty)
+      }
     }
     .sheet(item: $export) { files in
       ActivityView(items: files.urls).ignoresSafeArea()
@@ -163,6 +162,7 @@ struct PourDetailView: View {
     }
     .navigationTitle(pour.date.formatted(date: .abbreviated, time: .omitted))
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar { DoneButton() }
     .task { await load(as: pour.pattern) }
   }
 

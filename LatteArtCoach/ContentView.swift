@@ -9,11 +9,12 @@ struct ContentView: View {
   @State private var model = CoachModel()
   @State private var pickerItem: PhotosPickerItem?
   @State private var showingCamera = false
+  @State private var path: [Route] = []
   @AppStorage("pattern") private var pattern: Pattern = .tulip
   @Query(sort: \Pour.date) private var pours: [Pour]
 
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $path) {
       Group {
         switch model.state {
         case .idle:
@@ -39,26 +40,29 @@ struct ContentView: View {
       .navigationTitle(resultTitle)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        // Every screen past the start one can go straight home; the pour is
-        // already saved, so nothing is lost.
-        if showsDone {
-          ToolbarItem(placement: .topBarLeading) {
-            Button("Done") { model.reset() }
-              .accessibilityIdentifier("done")
-          }
-        }
         if !isAnalyzing {
-          ToolbarItem(placement: .topBarTrailing) {
-            NavigationLink {
-              HistoryView()
-            } label: {
+          ToolbarItem(placement: .topBarLeading) {
+            NavigationLink(value: Route.history) {
               Label("History", systemImage: "clock.arrow.circlepath")
             }
             .accessibilityIdentifier("history")
           }
         }
+        // Every screen past the start one can go straight home; the pour is
+        // already saved, so nothing is lost.
+        if showsDone { DoneButton() }
+      }
+      .navigationDestination(for: Route.self) { route in
+        switch route {
+        case .history: HistoryView()
+        case .pour(let pour): PourDetailView(pour: pour)
+        }
       }
     }
+    .environment(\.goHome, GoHomeAction {
+      path.removeAll()
+      model.reset()
+    })
     .onAppear { model.context = context }
     .onChange(of: pickerItem) { _, item in
       guard let item else { return }
