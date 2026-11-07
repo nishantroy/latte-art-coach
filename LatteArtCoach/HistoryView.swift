@@ -101,10 +101,13 @@ private struct ProgressSection: View {
             PointMark(x: .value("Date", pour.date), y: .value("Score", rating * 10))
               .foregroundStyle(by: .value("Series", "Your rating ×10"))
               .symbol(.diamond)
+              .symbolSize(70)
           }
         }
       }
-      .chartForegroundStyleScale(["App score": Color.measure, "Your rating ×10": Color.crema])
+      // Amber for the app's measured score; espresso for your rating, so the
+      // two read apart at a glance (crema and amber were too close).
+      .chartForegroundStyleScale(["App score": Color.measure, "Your rating ×10": Color.espresso])
       .chartYScale(domain: 0...100)
       .frame(height: 160)
 
