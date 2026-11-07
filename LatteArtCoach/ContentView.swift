@@ -10,6 +10,7 @@ struct ContentView: View {
   @State private var pickerItem: PhotosPickerItem?
   @State private var showingCamera = false
   @AppStorage("pattern") private var pattern: Pattern = .tulip
+  @Query(sort: \Pour.date) private var pours: [Pour]
 
   var body: some View {
     NavigationStack {
@@ -19,6 +20,8 @@ struct ContentView: View {
           start
         case .analyzing:
           ProgressView("Analyzing your pour…")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.milk)
         case .rating(let photo, let analysis, let pour):
           RateFirstView(photo: photo, analysis: analysis, pour: pour, onReveal: { model.reveal() })
         case .result(let photo, let analysis, let pour):
@@ -68,19 +71,30 @@ struct ContentView: View {
   }
 
   private var start: some View {
-    VStack(spacing: 20) {
-      Spacer()
-      Image(systemName: "cup.and.saucer.fill")
-        .font(.system(size: 56))
-        .foregroundStyle(.brown)
-      Text("Latte Art Coach")
-        .font(.largeTitle.bold())
-      Text("Pour a heart, tulip or rosetta, take a photo from above, and get a score with tips for your next pour.")
-        .multilineTextAlignment(.center)
-        .foregroundStyle(.secondary)
-      Spacer()
-      VStack(alignment: .leading, spacing: 8) {
-        Text("What did you pour?").font(.headline)
+    VStack(spacing: 22) {
+      Spacer(minLength: 8)
+      Image("IconArt")
+        .resizable()
+        .frame(width: 112, height: 112)
+        .clipShape(.rect(cornerRadius: 26))
+        .shadow(color: Color.espresso.opacity(0.18), radius: 12, y: 6)
+        .accessibilityHidden(true)
+      VStack(spacing: 6) {
+        Text("Latte Art Coach").font(.display(.largeTitle))
+        Text("Pour, snap it from above, and see what to change next time.")
+          .multilineTextAlignment(.center)
+          .foregroundStyle(.secondary)
+      }
+      if let progress = progressLine {
+        Label(progress, systemImage: "chart.line.uptrend.xyaxis")
+          .font(.subheadline)
+          .foregroundStyle(Color.espresso)
+          .card()
+          .accessibilityIdentifier("progress-line")
+      }
+      Spacer(minLength: 8)
+      VStack(alignment: .leading, spacing: 10) {
+        Text("What did you pour?").font(.display(.title3))
         PatternPicker(selection: $pattern)
       }
       VStack(spacing: 12) {
@@ -98,9 +112,22 @@ struct ContentView: View {
         .buttonStyle(.bordered)
       }
       .controlSize(.large)
-      .tint(.crema)
     }
     .padding(24)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color.milk)
+  }
+
+  /// How the chosen pattern is going, from history.
+  private var progressLine: String? {
+    guard let summary = ProgressSummary(records: pours.map(\.record), pattern: pattern) else { return nil }
+    let name = summary.pourCount == 1 ? pattern.noun : "\(pattern.noun)s"
+    let recent = Int(summary.recentAverageScore.rounded())
+    guard let earlier = summary.earlierAverageScore.map({ Int($0.rounded()) }) else {
+      return "\(summary.pourCount) \(name) so far, averaging \(recent)"
+    }
+    let direction = recent > earlier ? "up from" : recent < earlier ? "down from" : "same as"
+    return "Last \(summary.recentCount) \(pattern.noun)s: \(recent), \(direction) \(earlier) before"
   }
 
   private var resultTitle: String {
@@ -117,7 +144,6 @@ struct ContentView: View {
     } actions: {
       Button("Try another photo") { model.reset() }
         .buttonStyle(.borderedProminent)
-        .tint(.crema)
     }
   }
 }

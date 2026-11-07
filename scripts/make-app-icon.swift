@@ -1,4 +1,5 @@
-// Draws the app icon (light, dark and tinted) into the asset catalog.
+// Draws the app icon (light, dark and tinted), and the start screen's copy
+// of it, into the asset catalog.
 //   swift scripts/make-app-icon.swift
 //
 // A top-down view into the cup: crema with a poured heart (with its
@@ -89,9 +90,15 @@ func icon(_ appearance: Appearance, size: Int = 1024) -> CGImage {
 }
 
 let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-let folder = root.appendingPathComponent("LatteArtCoach/Assets.xcassets/AppIcon.appiconset")
-for (name, appearance) in [("AppIcon.png", Appearance.light), ("AppIcon-dark.png", .dark), ("AppIcon-tinted.png", .tinted)] {
-  let url = folder.appendingPathComponent(name)
+let assets = root.appendingPathComponent("LatteArtCoach/Assets.xcassets")
+let outputs: [(String, Appearance)] = [
+  ("AppIcon.appiconset/AppIcon.png", .light), ("AppIcon.appiconset/AppIcon-dark.png", .dark),
+  ("AppIcon.appiconset/AppIcon-tinted.png", .tinted),
+  // The same art for the start screen.
+  ("IconArt.imageset/IconArt.png", .light), ("IconArt.imageset/IconArt-dark.png", .dark),
+]
+for (name, appearance) in outputs {
+  let url = assets.appendingPathComponent(name)
   let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)!
   CGImageDestinationAddImage(dest, icon(appearance), nil)
   guard CGImageDestinationFinalize(dest) else { fatalError("Couldn't write \(url.path)") }
