@@ -4,6 +4,7 @@ import SwiftUI
 @main
 struct LatteArtCoachApp: App {
   init() {
+    Theme.configure()
     // UI tests start from a fresh install's state.
     if ProcessInfo.processInfo.arguments.contains("-uitest") {
       UserDefaults.standard.removeObject(forKey: "pattern")

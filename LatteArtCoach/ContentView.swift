@@ -19,6 +19,8 @@ struct ContentView: View {
           start
         case .analyzing:
           ProgressView("Analyzing your pour…")
+        case .rating(let photo, let analysis, let pour):
+          RateFirstView(photo: photo, analysis: analysis, pour: pour, onReveal: { model.reveal() })
         case .result(let photo, let analysis, let pour):
           ResultView(
             photo: photo, analysis: analysis, pour: pour,
@@ -96,13 +98,14 @@ struct ContentView: View {
         .buttonStyle(.bordered)
       }
       .controlSize(.large)
-      .tint(.brown)
+      .tint(.crema)
     }
     .padding(24)
   }
 
   private var resultTitle: String {
     if case .result(_, let analysis, _) = model.state { return "Your \(analysis.pattern.noun)" }
+    if case .rating(_, let analysis, _) = model.state { return "Your \(analysis.pattern.noun)" }
     return ""
   }
 
@@ -114,7 +117,7 @@ struct ContentView: View {
     } actions: {
       Button("Try another photo") { model.reset() }
         .buttonStyle(.borderedProminent)
-        .tint(.brown)
+        .tint(.crema)
     }
   }
 }

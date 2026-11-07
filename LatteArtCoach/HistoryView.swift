@@ -41,6 +41,8 @@ struct HistoryView: View {
           description: Text("Score a \(pattern.noun) and it shows up here."))
       }
     }
+    .scrollContentBackground(.hidden)
+    .background(Color.milk)
     .navigationTitle("History")
     .toolbar {
       Button {
@@ -66,7 +68,7 @@ private struct PourRow: View {
         if let data = pour.thumbnail, let image = UIImage(data: data) {
           Image(uiImage: image).resizable().scaledToFill()
         } else {
-          Color.brown.opacity(0.2)
+          Color.crema.opacity(0.2)
         }
       }
       .frame(width: 56, height: 56)
@@ -102,7 +104,7 @@ private struct ProgressSection: View {
           }
         }
       }
-      .chartForegroundStyleScale(["App score": Color.brown, "Your rating ×10": Color.orange])
+      .chartForegroundStyleScale(["App score": Color.measure, "Your rating ×10": Color.crema])
       .chartYScale(domain: 0...100)
       .frame(height: 160)
 

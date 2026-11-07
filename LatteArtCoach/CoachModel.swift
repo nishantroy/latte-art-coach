@@ -8,6 +8,8 @@ final class CoachModel {
   enum State {
     case idle
     case analyzing
+    /// Scored but not yet shown: the user rates the pour first.
+    case rating(UIImage, PourAnalysis, Pour)
     case result(UIImage, PourAnalysis, Pour?)
     case failed(String)
   }
@@ -22,6 +24,13 @@ final class CoachModel {
   }
 
   func reset() { state = .idle }
+
+  /// Shows the score once the user has rated the pour (or skipped).
+  func reveal() {
+    guard case .rating(let image, let analysis, let pour) = state else { return }
+    try? context?.save()
+    state = .result(image, analysis, pour)
+  }
   func fail(_ message: String) { state = .failed(message) }
 
   /// Scores the current photo as a different pattern. Analysis takes tens of
@@ -47,7 +56,7 @@ final class CoachModel {
       let pour = Pour(photo: data, analysis: analysis)
       context?.insert(pour)
       try? context?.save()
-      state = .result(photo.image, analysis, pour)
+      state = .rating(photo.image, analysis, pour)
     case (.success, nil):
       state = .failed(Self.message(for: .unreadableImage))
     case (.failure(let failure), _):

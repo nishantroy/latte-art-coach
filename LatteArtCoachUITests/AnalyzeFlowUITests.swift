@@ -34,37 +34,41 @@ final class AnalyzeFlowUITests: XCTestCase {
     let newest = try XCTUnwrap(visible.min { ($0.frame.minY, $0.frame.minX) < ($1.frame.minY, $1.frame.minX) })
     newest.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
-    let score = app.staticTexts["overall-score"]
-    XCTAssertTrue(score.waitForExistence(timeout: 20), "No score appeared")
-    capture("2-result")
-    let value = try XCTUnwrap(Int(score.label))
-    XCTAssertTrue((70...95).contains(value), "Unexpected score \(value) for fixture pour 3")
-    print("ANALYSIS: \(app.staticTexts["analysis-duration"].label)")
-    XCTAssertTrue(app.navigationBars["Your tulip"].exists)
-
-    // Re-score the same photo as a rosetta without picking it again.
-    app.buttons["Rosetta"].tap()
-    XCTAssertTrue(app.navigationBars["Your rosetta"].waitForExistence(timeout: 5), "Re-scoring didn't switch the pattern")
-    XCTAssertTrue(score.exists)
-    print("AS ROSETTA: \(score.label)")
-    capture("2b-rescored-rosetta")
-
-    // Rate it; the rating is saved with the pour.
+    // Rate first: the score stays hidden until the pour is rated.
     let seven = app.buttons["rating-7"]
-    for _ in 0..<4 where !seven.isHittable { app.swipeUp() }
+    XCTAssertTrue(seven.waitForExistence(timeout: 20), "Rating step didn't appear")
+    XCTAssertFalse(app.staticTexts["overall-score"].exists, "Score shown before rating")
+    let reveal = app.buttons["reveal"]
+    XCTAssertFalse(reveal.isEnabled, "Reveal should wait for a rating")
+    capture("2-rate-first")
     seven.tap()
     let selected = expectation(for: NSPredicate(format: "selected == true"), evaluatedWith: seven)
     XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 3), .completed, "Rating didn't show as selected")
-    capture("3-rated")
+    reveal.tap()
+
+    let score = app.staticTexts["overall-score"]
+    XCTAssertTrue(score.waitForExistence(timeout: 10), "No score appeared")
+    sleep(2)  // let the arc finish filling for the screenshot
+    capture("3-result")
+    let value = try XCTUnwrap(Int(score.label))
+    XCTAssertTrue((70...95).contains(value), "Unexpected score \(value) for fixture pour 3")
+    XCTAssertTrue(app.staticTexts["You rated it 7/10"].exists)
+    XCTAssertTrue(app.navigationBars["Your tulip"].exists)
+
+    // Re-score the same photo as a rosetta without picking it again.
+    let rosetta = app.buttons["Rosetta"]
+    for _ in 0..<6 where !rosetta.isHittable { app.swipeUp() }
+    capture("3a-result-scrolled")
+    rosetta.tap()
+    XCTAssertTrue(app.navigationBars["Your rosetta"].waitForExistence(timeout: 5), "Re-scoring didn't switch the pattern")
+    XCTAssertTrue(score.exists)
 
     // Coaching: from the on-device model when Apple Intelligence is on,
     // otherwise the rule-based tips (the Simulator usually can't run the
     // model; pour 3 scored as a rosetta gets "Thinner leaves").
-    app.swipeUp()
     let coached = app.staticTexts["coach-focus"].exists || app.otherElements["coach-thinking"].exists
       || app.staticTexts["Thinner leaves"].exists
-    capture("3b-coaching")
-    XCTAssertTrue(coached, "No coaching or fallback note shown")
+    XCTAssertTrue(coached, "No coaching or fallback tips shown")
 
     // The pour shows up in history with its rating.
     let again = app.buttons["Score another pour"]

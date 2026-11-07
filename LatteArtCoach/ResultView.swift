@@ -14,80 +14,97 @@ struct ResultView: View {
 
   var body: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        PatternPicker(selection: Binding(get: { selectedPattern ?? analysis.pattern }, set: { selectedPattern = $0 }))
-          .accessibilityLabel("Scored as")
-          .onChange(of: selectedPattern) { _, pattern in
-            if let pattern, pattern != analysis.pattern { onRescore(pattern) }
-          }
-        scoreHeader
-        if let note = resemblanceNote {
-          Label(note, systemImage: "info.circle")
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .accessibilityIdentifier("resemblance-note")
-        }
+      VStack(alignment: .leading, spacing: 16) {
         PourPhotoView(photo: photo, analysis: analysis, showOverlay: showOverlay)
           .onTapGesture { showOverlay.toggle() }
           .accessibilityLabel("Photo of your pour, tap to toggle the overlay")
-        if let pour {
-          RatingView(rating: Binding(get: { pour.rating }, set: { pour.rating = $0; try? pour.modelContext?.save() }))
+        scoreHeader
+        if let looks = resemblance {
+          Button { rescore(looks) } label: {
+            Label("This reads more like a \(looks.noun). Score it as one", systemImage: "arrow.triangle.2.circlepath")
+              .font(.subheadline)
+              .frame(maxWidth: .infinity, alignment: .leading)
+          }
+          .buttonStyle(.plain)
+          .foregroundStyle(Color.crema)
+          .card()
+          .accessibilityIdentifier("resemblance-note")
         }
-        CoachingSection(analysis: analysis, pour: pour)
-        breakdown
+        CoachingSection(analysis: analysis, pour: pour).card()
+        breakdown.card()
+        if let pour {
+          VStack(alignment: .leading, spacing: 10) {
+            Text("Your rating").font(.display(.title3))
+            RatingRow(rating: Binding(get: { pour.rating }, set: { pour.rating = $0; try? pour.modelContext?.save() }))
+          }
+          .card()
+        }
+        VStack(alignment: .leading, spacing: 10) {
+          Text("Scored as").font(.display(.title3))
+          PatternPicker(selection: Binding(get: { selectedPattern ?? analysis.pattern }, set: { selectedPattern = $0 }))
+            .onChange(of: selectedPattern) { _, pattern in
+              if let pattern, pattern != analysis.pattern { onRescore(pattern) }
+            }
+        }
+        .card()
         Text("Analyzed on device in \(analysis.duration.formatted(.units(allowed: [.milliseconds])))")
           .font(.footnote)
           .foregroundStyle(.secondary)
           .accessibilityIdentifier("analysis-duration")
         if let onAgain {
           Button(action: onAgain) {
-            Label("Score another pour", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity)
+            Label("Score another pour", systemImage: "camera").frame(maxWidth: .infinity)
           }
           .buttonStyle(.borderedProminent)
           .controlSize(.large)
-          .tint(.brown)
         }
       }
       .padding()
     }
+    .background(Color.milk)
   }
 
+  private func rescore(_ pattern: Pattern) { selectedPattern = pattern }
+
   private var scoreHeader: some View {
-    HStack(alignment: .firstTextBaseline, spacing: 12) {
-      Text("\(analysis.score.overall)")
-        .font(.system(size: 64, weight: .bold, design: .rounded))
-        .accessibilityIdentifier("overall-score")
-      VStack(alignment: .leading) {
-        Text(verdict).font(.title3.bold())
-        Text("out of 100").foregroundStyle(.secondary)
+    HStack(spacing: 16) {
+      ScoreGauge(score: analysis.score.overall).frame(width: 132, height: 132)
+      VStack(alignment: .leading, spacing: 6) {
+        Text(verdict).font(.display(.title2))
+        if let rating = pour?.rating {
+          Text("You rated it \(rating)/10").font(.subheadline).foregroundStyle(.secondary)
+        }
+        Text(showOverlay ? "Tap the photo to hide what was measured" : "Tap the photo to show what was measured")
+          .font(.caption)
+          .foregroundStyle(.secondary)
       }
     }
   }
 
   private var verdict: String {
     switch analysis.score.overall {
-    case 90...: "Excellent"
+    case 90...: "Excellent \(analysis.pattern.noun)"
     case 80..<90: "Good \(analysis.pattern.noun)"
     case 65..<80: "Getting there"
     default: "Keep practicing"
     }
   }
 
-  /// Shown when the foam clearly reads as a different pattern than the one
-  /// being scored, e.g. tulip stacks that came out as rosetta leaves.
-  private var resemblanceNote: String? {
+  /// A clearly different pattern than the one being scored, e.g. tulip
+  /// stacks that came out as rosetta leaves.
+  private var resemblance: Pattern? {
     guard let looks = analysis.resembles, looks != analysis.pattern else { return nil }
-    return "This reads more like a \(looks.noun). Tap \(looks.displayName) above to score it as one."
+    return looks
   }
 
   private var breakdown: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text("Breakdown").font(.headline)
+      Text("Breakdown").font(.display(.title3))
       ForEach(PourScore.Component.allCases, id: \.self) { component in
         let label = component.label(for: analysis.pattern)
         let value = analysis.score.components[component] ?? 0
         HStack {
-          Text(label).font(.subheadline).frame(width: 110, alignment: .leading)
+          Text(label).font(.subheadline).frame(width: 116, alignment: .leading)
           ProgressView(value: value).tint(value >= 0.7 ? .green : value >= 0.4 ? .orange : .red)
           Text("\(Int((value * 100).rounded()))").font(.subheadline.monospacedDigit()).frame(width: 32, alignment: .trailing)
         }
@@ -144,9 +161,9 @@ struct PourPhotoView: View {
             var axis = Path()
             axis.move(to: p(analysis.stem.x, analysis.stem.y))
             axis.addLine(to: p(analysis.tip.x, analysis.tip.y))
-            context.stroke(axis, with: .color(.yellow), lineWidth: 2)
+            context.stroke(axis, with: .color(.measure), lineWidth: 2.5)
             let tip = p(analysis.tip.x, analysis.tip.y)
-            context.fill(Path(ellipseIn: CGRect(x: tip.x - 4, y: tip.y - 4, width: 8, height: 8)), with: .color(.yellow))
+            context.fill(Path(ellipseIn: CGRect(x: tip.x - 4, y: tip.y - 4, width: 8, height: 8)), with: .color(.measure))
           }
         }
       }

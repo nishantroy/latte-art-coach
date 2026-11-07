@@ -96,7 +96,7 @@ struct CoachingSection: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack {
-        Text("Next pour").font(.headline)
+        Text("Next pour").font(.display(.title3))
         Spacer()
         if isAI {
           Label("Apple Intelligence", systemImage: "apple.intelligence")
@@ -135,7 +135,11 @@ struct CoachingSection: View {
   @ViewBuilder
   private func written(_ coaching: AICoaching.PartiallyGenerated) -> some View {
     if let focus = coaching.focus, !focus.isEmpty {
-      Text(focus).font(.subheadline.bold()).accessibilityIdentifier("coach-focus")
+      Text(focus)
+        .font(.body.weight(.semibold))
+        .padding(.leading, 10)
+        .overlay(alignment: .leading) { Capsule().fill(Color.measure).frame(width: 3) }
+        .accessibilityIdentifier("coach-focus")
     }
     if let tips = coaching.tips {
       ForEach(Array(tips.enumerated()), id: \.offset) { _, tip in
@@ -159,7 +163,7 @@ struct CoachingSection: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(12)
-    .background(.brown.opacity(0.1), in: .rect(cornerRadius: 12))
+    .background(Color.crema.opacity(0.08), in: .rect(cornerRadius: 12))
   }
 
   private var askBox: some View {
@@ -171,7 +175,7 @@ struct CoachingSection: View {
           .onSubmit(send)
         Button(action: send) { Image(systemName: "arrow.up.circle.fill").font(.title2) }
           .disabled(question.trimmingCharacters(in: .whitespaces).isEmpty || coach.isAnswering)
-          .tint(.brown)
+          .tint(.crema)
       }
       if let answer = coach.answer {
         Text(answer.isEmpty ? "…" : answer).font(.subheadline)
