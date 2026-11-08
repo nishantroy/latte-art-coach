@@ -117,3 +117,16 @@ import Testing
     #expect((10...30).contains(result.score.overall), "overall \(result.score.overall)")
   }
 }
+
+@Suite struct SwirlTests {
+  /// Two thick white masses swirled off to one side, poured as a tulip.
+  /// Rated 1/10; the two blobs once counted as perfect tulip stacks.
+  @Test func isNotATulip() throws {
+    let url = try #require(Bundle.module.url(forResource: "swirl", withExtension: "jpg", subdirectory: "Fixtures/misses"))
+    let result = try PourAnalysis.analyze(imageData: Data(contentsOf: url), pattern: .tulip)
+    #expect(result.score.components[.definition]! < 0.2)
+    print("swirl as tulip: \(result.score.overall)")
+    #expect(result.score.overall <= 20, "overall \(result.score.overall)")
+  }
+}
+
