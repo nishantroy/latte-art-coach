@@ -76,7 +76,7 @@ struct StartView: View {
         .shadow(color: Color.espresso.opacity(0.18), radius: 12, y: 6)
         .accessibilityHidden(true)
       VStack(spacing: 6) {
-        Text("Latte Art Coach").font(.display(.largeTitle))
+        Text("Lattelier").font(.display(.largeTitle))
         Text("Pour, snap it from above, and see what to change next time.")
           .multilineTextAlignment(.center)
           .foregroundStyle(.secondary)

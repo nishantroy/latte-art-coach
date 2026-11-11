@@ -136,7 +136,7 @@ struct LiveCameraView: View {
         ContentUnavailableView {
           Label("Camera is off", systemImage: "camera.fill")
         } description: {
-          Text("Allow camera access for Latte Coach in Settings, or choose a photo instead.")
+          Text("Allow camera access for Lattelier in Settings, or choose a photo instead.")
         } actions: {
           Button("Close") { onFinish(nil) }.buttonStyle(.borderedProminent)
         }

@@ -48,4 +48,4 @@ xcrun devicectl device install app --device "$DEVICE_ID" "$APP" >/dev/null
 echo "== Launching (unlock the phone if this fails)"
 xcrun devicectl device process launch --device "$DEVICE_ID" com.nishantroy.latteartcoach >/dev/null \
   && echo "Launched on $NAME." \
-  || echo "Installed. Unlock the phone and open Latte Coach."
+  || echo "Installed. Unlock the phone and open Lattelier."
