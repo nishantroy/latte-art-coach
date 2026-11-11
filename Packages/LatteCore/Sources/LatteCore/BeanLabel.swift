@@ -61,18 +61,24 @@ public enum BeanLabelParser {
     let joined = texts.joined(separator: "\n")
     let lower = joined.lowercased()
 
-    label.headline = lines.filter { $0.text.count >= 3 && !$0.text.contains(where: \.isNumber) }
-      .max { $0.height < $1.height }?.text
     label.name = blendName(in: lines)
-    label.roaster = roaster(in: texts)
+    label.roaster = roaster(in: texts) ?? brandMark(in: lines)
+    // The biggest text that isn't the roaster's mark.
+    label.headline = lines.filter { line in
+      line.text.count >= 3 && !line.text.contains(where: \.isNumber)
+        && label.roaster.map { squash($0).contains(squash(line.text)) } != true
+    }.max { $0.height < $1.height }?.text
     label.roastDate = roastDate(in: texts, today: today, calendar: calendar)
-    label.origin = origins.first { lower.contains($0.lowercased()) }
+    // Every origin, in the order printed ("Oaxaca, Mexico / Churupampa, Peru").
+    label.origin = origins.filter { lower.contains($0.lowercased()) }
+      .sorted { lower.range(of: $0.lowercased())!.lowerBound < lower.range(of: $1.lowercased())!.lowerBound }
+      .joined(separator: ", ").nilIfEmpty
     label.process = processes.first { lower.contains($0.match) }?.name
     label.variety = varieties(in: lower)
     label.altitude = altitude(in: joined)
     label.tastingNotes = tastingNotes(in: texts)
 
-    if let printed = printedRoastLevel(lower) {
+    if let printed = printedRoastLevel(lower) ?? texts.lazy.compactMap({ roastLevelAlone($0) }).first {
       label.roastLevel = printed
     } else if let guess = guessRoastLevel(from: label.tastingNotes) {
       label.roastLevel = guess
@@ -120,6 +126,28 @@ public enum BeanLabelParser {
       guard (2...5).contains(name.split(separator: " ").count), !name.contains(where: \.isNumber) else { continue }
       // Labels set the roaster in capitals; "HUCKLEBERRY ROASTERS" reads
       // better as "Huckleberry Roasters".
+      return name == name.uppercased() ? name.capitalized : name
+    }
+    return nil
+  }
+
+  /// A big brand mark naming the roaster, such as "MOTORING" over "COFFEE"
+  /// or "SEY COFFEE": one or two words and "Coffee", among the largest text
+  /// on the bag. Smaller lines ("A bag of tasty coffee") don't count.
+  static func brandMark(in lines: [LabelLine]) -> String? {
+    guard let biggest = lines.map(\.height).max(), biggest > 0 else { return nil }
+    func words(_ s: String) -> [Substring] { s.split(separator: " ") }
+    for (i, line) in lines.enumerated() where line.height >= 0.6 * biggest {
+      let text = line.text.trimmingCharacters(in: .whitespaces)
+      guard words(text).last?.lowercased() == "coffee", !text.contains(where: \.isNumber) else { continue }
+      var name = text
+      // "COFFEE" alone: the name is the line above, set as big.
+      if words(text).count == 1 {
+        guard i > 0, (1...2).contains(words(lines[i - 1].text).count), lines[i - 1].height >= 0.6 * line.height,
+              !lines[i - 1].text.contains(where: \.isNumber) else { continue }
+        name = lines[i - 1].text + " " + text
+      }
+      guard (2...3).contains(words(name).count) else { continue }
       return name == name.uppercased() ? name.capitalized : name
     }
     return nil
@@ -212,7 +240,7 @@ public enum BeanLabelParser {
   /// lighter (+1) or darker (−1) roast. Neutral words count as notes only.
   static let flavors: [String: Int] = [
     "jasmine": 2, "floral": 2, "bergamot": 2, "hibiscus": 2, "rose": 1, "lavender": 2, "tea": 1, "black tea": 1,
-    "lemon": 2, "lime": 2, "citrus": 2, "grapefruit": 2, "orange": 1, "tangerine": 1, "mandarin": 1, "yuzu": 2,
+    "lemon": 2, "lime": 2, "citrus": 2, "grapefruit": 2, "orange": 1, "orange peel": 1, "tangerine": 1, "mandarin": 1, "yuzu": 2,
     "blueberry": 1, "strawberry": 1, "raspberry": 1, "blackberry": 1, "berry": 1, "cranberry": 1, "cherry": 1,
     "black currant": 1, "blackcurrant": 1, "grape": 1, "peach": 1, "apricot": 1, "stone fruit": 1, "nectarine": 1,
     "plum": 0, "mango": 1, "passion fruit": 1, "pineapple": 1, "tropical": 1, "papaya": 1, "lychee": 2,
@@ -257,6 +285,17 @@ public enum BeanLabelParser {
     if lower.contains("medium roast") || lower.contains("roast: medium") || lower.contains("roast level: medium") { return .medium }
     if lower.contains("dark roast") || lower.contains("roast: dark") || lower.contains("roast level: dark") { return .dark }
     return nil
+  }
+
+  /// A roast level printed on its own, as in a label's header row ("MEDIUM").
+  static func roastLevelAlone(_ text: String) -> BeanLabel.RoastLevel? {
+    switch squash(text).replacingOccurrences(of: " roast ", with: " ") {
+    case " light ": .light
+    case " medium ": .medium
+    case " medium dark ": .mediumDark
+    case " dark ": .dark
+    default: nil
+    }
   }
 
   /// Bright fruit and florals point to lighter roasts; chocolate, molasses

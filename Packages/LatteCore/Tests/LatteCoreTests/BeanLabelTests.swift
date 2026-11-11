@@ -114,6 +114,27 @@ import Testing
     #expect(label.roaster == "Huckleberry Roasters")
   }
 
+  /// A tilted bag with the roaster as a big two-line mark ("MOTORING" over
+  /// "COFFEE"), a widely spaced name, two origins, and the roast level
+  /// printed on its own in a header row.
+  @Test func readsABrandMarkAndAWideName() async throws {
+    let url = try #require(Bundle.module.url(forResource: "motoring-tire-kicker", withExtension: "jpg", subdirectory: "Fixtures/labels"))
+    let lines = try await LabelReader.read(imageData: Data(contentsOf: url))
+    let label = BeanLabelParser.parse(lines, today: Self.today, calendar: Self.utc)
+    #expect(label.headline == "TIRE KICKER", "\(lines.map(\.text))")
+    #expect(label.roaster == "Motoring Coffee")
+    #expect(label.origin == "Mexico, Peru")
+    #expect(label.process == "Washed")
+    #expect(label.roastLevel == .medium && !label.roastLevelIsGuess)
+    #expect(label.tastingNotes == ["milk chocolate", "caramel", "orange peel"])
+  }
+
+  @Test func aSmallLineEndingInCoffeeIsNotTheRoaster() {
+    let lines = [LabelLine("HUCK", height: 0.5), LabelLine("A BAG OF TASTY COFFEE", height: 0.02), LabelLine("Civitas", height: 0.016)]
+    #expect(Self.parse(lines.map(\.text)).roaster == nil)
+    #expect(BeanLabelParser.parse(lines, today: Self.today, calendar: Self.utc).roaster == nil)
+  }
+
   /// End to end with Apple's text recognition: draws a label, reads it back.
   @Test func readsARenderedLabel() async throws {
     let image = try #require(Self.render([

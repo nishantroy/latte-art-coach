@@ -27,7 +27,31 @@ public enum LabelReader {
       }
     }
     // Top to bottom, as printed (Vision's y axis points up).
-    return found.sorted { $0.top > $1.top }.map(\.line)
+    return joinRows(found).sorted { $0.top > $1.top }.map(\.line)
+  }
+
+  /// Text this tall is a name or brand mark, not body text.
+  static let title = 0.03
+
+  /// Joins big words set on one row ("TIRE" and "KICKER", read as two lines
+  /// when the bag is tilted or the words are spaced wide), left to right.
+  static func joinRows(_ found: [(line: LabelLine, top: Double)]) -> [(line: LabelLine, top: Double)] {
+    var rows: [(line: LabelLine, top: Double)] = []
+    for item in found.sorted(by: { ($0.line.left ?? 0) < ($1.line.left ?? 0) }) {
+      let h = item.line.height
+      if h > title, h <= giant, let j = rows.firstIndex(where: { row in
+        let rh = row.line.height
+        let overlap = min(row.top, item.top) - max(row.top - rh, item.top - h)
+        return rh > title && rh <= giant && overlap >= 0.5 * min(rh, h) && max(rh, h) <= 1.5 * min(rh, h)
+      }) {
+        let row = rows[j]
+        rows[j] = (LabelLine(row.line.text + " " + item.line.text, height: max(row.line.height, h), left: row.line.left),
+                   max(row.top, item.top))
+      } else {
+        rows.append(item)
+      }
+    }
+    return rows
   }
 
   /// Lines in a horizontal band of the image (normalized, y up), with their

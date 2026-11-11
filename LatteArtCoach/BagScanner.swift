@@ -44,7 +44,10 @@ enum BagScanner {
        let reading = try? await read(lines) {
       label = BeanLabelParser.merge(label, reading, lines: lines)
     }
-    return Result(name: label.name ?? label.headline, roaster: label.roaster, label: label,
+    // Labels often set the name in capitals: "TIRE KICKER" reads better as
+    // "Tire Kicker".
+    let name = (label.name ?? label.headline).map { $0 == $0.uppercased() ? $0.capitalized : $0 }
+    return Result(name: name, roaster: label.roaster, label: label,
                   text: lines.map(\.text).joined(separator: "\n"))
   }
 

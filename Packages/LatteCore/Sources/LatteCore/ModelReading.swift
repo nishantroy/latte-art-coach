@@ -33,7 +33,7 @@ extension BeanLabelParser {
     // A big brand mark ("HUCK" for Huckleberry Roasters) is the roaster,
     // not the coffee's name.
     let name = onBag(model.name).flatMap { name in
-      label.roaster.map { $0.lowercased().contains(name.lowercased()) } == true ? nil : name
+      label.roaster.map { $0.lowercased().contains(name.lowercased()) } == true ? nil : wholeTitle(name, in: lines)
     }
     label.name = rules.name ?? name
     // With no roaster printed, the model may offer the coffee's own name.
@@ -67,6 +67,16 @@ extension BeanLabelParser {
     }
     label.tastingNotes = Array(merged.prefix(8))
     return label
+  }
+
+  /// The whole short line a name was taken from, when the model only kept
+  /// part of it ("KICKER" from "TIRE KICKER").
+  static func wholeTitle(_ name: String, in lines: [LabelLine]) -> String {
+    let line = lines.map(\.text).first { text in
+      squash(text).contains(squash(name)) && (1...4).contains(text.split(separator: " ").count)
+        && !text.contains(where: \.isNumber)
+    }
+    return line ?? name
   }
 
   /// Lowercased with every run of spaces and punctuation as one space, so
