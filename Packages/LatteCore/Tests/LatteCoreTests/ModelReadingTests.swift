@@ -42,6 +42,15 @@ import Testing
     #expect(label.name == "Civitas Blend" && label.roaster == nil)
   }
 
+  /// The phone reads Motoring's stylized M as "VI".
+  @Test func snapsAMisreadRoasterToASavedOne() {
+    let saved = ["Huckleberry Roasters", "Motoring Coffee"]
+    #expect(BeanLabelParser.closest("Viotoring Coffee", among: saved) == "Motoring Coffee")
+    #expect(BeanLabelParser.closest("HUCKLEBERRY ROASTERS", among: saved) == "Huckleberry Roasters")
+    #expect(BeanLabelParser.closest("Onyx Coffee Lab", among: saved) == nil)
+    #expect(BeanLabelParser.closest("Sey", among: ["Onyx"]) == nil)
+  }
+
   @Test func fillsWhatTheRulesMissed() {
     let lines = ["ONYX", "Guji Hambela", "Ethiopia", "Washed", "74158", "elevation 2,100 m", "packed 11.01.26", "Peach tea, jasmine"]
       .map { LabelLine($0) }

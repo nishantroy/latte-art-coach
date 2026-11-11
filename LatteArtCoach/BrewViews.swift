@@ -145,6 +145,7 @@ struct NewBeanForm: View {
     self.onSave = onSave
   }
   @Environment(\.dismiss) private var dismiss
+  @Query private var savedBeans: [Bean]
   @State private var name = ""
   @State private var roaster = ""
   @State private var knowsRoastDate = false
@@ -281,7 +282,9 @@ struct NewBeanForm: View {
     // Only fill what was found; keep anything already typed.
     func fill(_ field: inout String, _ value: String?) { if field.isEmpty, let value { field = value } }
     fill(&name, result.name)
-    fill(&roaster, result.roaster)
+    // A roaster already saved under a near spelling ("Viotoring Coffee" for
+    // "Motoring Coffee", whose stylized M reads as "VI") is that roaster.
+    fill(&roaster, result.roaster.map { BeanLabelParser.closest($0, among: savedBeans.compactMap(\.roaster)) ?? $0 })
     fill(&origin, label.origin)
     fill(&process, label.process)
     fill(&variety, label.variety)

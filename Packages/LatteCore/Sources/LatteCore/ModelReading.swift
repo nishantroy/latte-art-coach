@@ -79,6 +79,24 @@ extension BeanLabelParser {
     return line ?? name
   }
 
+  /// The known name `text` is a misreading of: within a couple of letters,
+  /// ignoring case and punctuation. Nil when none is that close.
+  public static func closest(_ text: String, among known: [String]) -> String? {
+    let target = Array(squash(text))
+    func distance(_ a: [Character], _ b: [Character]) -> Int {
+      var row = Array(0...b.count)
+      for (i, ca) in a.enumerated() {
+        var next = [i + 1]
+        for (j, cb) in b.enumerated() { next.append(min(row[j + 1] + 1, next[j] + 1, row[j] + (ca == cb ? 0 : 1))) }
+        row = next
+      }
+      return row[b.count]
+    }
+    return known.map { ($0, distance(target, Array(squash($0)))) }
+      .filter { $0.1 <= max(1, min(3, target.count / 6)) }
+      .min { $0.1 < $1.1 }?.0
+  }
+
   /// Lowercased with every run of spaces and punctuation as one space, so
   /// "Dark Sugars" matches "dark sugars • chocolate".
   static func squash(_ s: String) -> String {
