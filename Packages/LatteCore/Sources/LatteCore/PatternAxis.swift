@@ -17,12 +17,9 @@ public struct PatternAxis: Sendable, Equatable {
 
   /// Finds the pattern's mirror axis, then orients it stem → tip.
   ///
-  /// - The axis is the line through the foam that maximizes mirror overlap,
-  ///   which stays on the spine even for wide or lopsided patterns.
-  /// - The crema lines between stacks curve into chevrons whose points face
-  ///   the stem (as stacks are pushed, each one wraps around the next). Edges
-  ///   inside the pattern's hull therefore move away from the spine as they
-  ///   move toward the tip, and the sign of that slope gives the direction.
+  /// The axis is a line through the foam with near-best mirror overlap,
+  /// which stays on the spine even for wide or lopsided patterns. Among
+  /// such lines, the one the stacks' chevrons agree on wins (see `orient`).
   public static func find(surface: CupSurface, mask: [UInt8]) -> PatternAxis? {
     let n = surface.size
     var points: [(x: Double, y: Double)] = []
@@ -53,28 +50,51 @@ public struct PatternAxis: Sendable, Equatable {
       return Double(hits) / Double(total)
     }
 
-    var best = (theta: 0.0, offset: 0.0, score: -1.0)
-    for step in 0..<90 {
-      let theta = Double(step) * .pi / 90
-      let score = overlap(theta: theta, offset: 0)
-      if score > best.score { best = (theta, 0, score) }
+    // Coarse scan of every angle. An oval outline mirrors well across both
+    // its long and short axes, so every local peak close to the best one is
+    // a candidate; the stacks inside decide between them (below).
+    let coarse = (0..<90).map { overlap(theta: Double($0) * .pi / 90, offset: 0) }
+    let top = coarse.max()!
+    let peaks = (0..<90).filter { i in
+      coarse[i] >= top - candidateMargin && coarse[i] >= coarse[(i + 89) % 90] && coarse[i] >= coarse[(i + 1) % 90]
     }
-    // Refine the angle and let the axis slide sideways off the centroid.
-    for dTheta in stride(from: -2.0, through: 2.0, by: 0.5) {
-      for offset in stride(from: -12.0, through: 12.0, by: 2.0) {
-        let theta = best.theta + dTheta * .pi / 180
-        let score = overlap(theta: theta, offset: offset)
-        if score > best.score { best = (theta, offset, score) }
-      }
-    }
-    var dx = cos(best.theta), dy = sin(best.theta)
-    let ox = mx - dy * best.offset, oy = my + dx * best.offset
 
-    // Chevron slope inside the pattern's hull.
     let hull = ConvexHull.mask(points: points, size: n, shrink: 4)
     let white = (0..<(n * n)).map { i -> Float in
       surface.inside[i] == 1 ? FoamSegmenter.whiteness(l: surface.l[i], a: surface.a[i], b: surface.b[i]) : 0
     }
+    var result: PatternAxis?
+    for peak in peaks {
+      var best = (theta: Double(peak) * .pi / 90, offset: 0.0, score: coarse[peak])
+      // Refine the angle and let the axis slide sideways off the centroid.
+      for dTheta in stride(from: -2.0, through: 2.0, by: 0.5) {
+        for offset in stride(from: -12.0, through: 12.0, by: 2.0) {
+          let theta = Double(peak) * .pi / 90 + dTheta * .pi / 180
+          let score = overlap(theta: theta, offset: offset)
+          if score > best.score { best = (theta, offset, score) }
+        }
+      }
+      let axis = orient(theta: best.theta, origin: (mx - sin(best.theta) * best.offset, my + cos(best.theta) * best.offset),
+                        overlap: best.score, hull: hull, white: white, size: n)
+      if result.map({ axis.directionConfidence > $0.directionConfidence }) ?? true { result = axis }
+    }
+    return result
+  }
+
+  /// Mirror-overlap peaks within this much of the best are candidate axes.
+  static let candidateMargin = 0.08
+
+  /// Orients the line at `theta` through `origin` stem → tip.
+  ///
+  /// The crema lines between stacks curve into chevrons whose points face
+  /// the stem (as stacks are pushed, each one wraps around the next). Edges
+  /// inside the pattern's hull therefore move away from the spine as they
+  /// move toward the tip, and the sign of that slope gives the direction.
+  /// Across any other line the slopes cancel, so confidence is low.
+  static func orient(theta: Double, origin: (x: Double, y: Double), overlap: Double,
+                     hull: [UInt8], white: [Float], size n: Int) -> PatternAxis {
+    var dx = cos(theta), dy = sin(theta)
+    let ox = origin.x, oy = origin.y
     var slope = 0.0, weight = 0.0
     for y in 2..<(n - 2) {
       for x in 2..<(n - 2) where hull[y * n + x] == 1 {
@@ -98,7 +118,7 @@ public struct PatternAxis: Sendable, Equatable {
     // Each term is at most half its edge strength, so 2·|slope|/weight is in 0...1.
     let confidence = weight > 0 ? min(1, 2 * abs(slope) / weight) : 0
     return PatternAxis(originX: ox, originY: oy, directionX: dx, directionY: dy,
-                       mirrorOverlap: best.score, directionConfidence: confidence)
+                       mirrorOverlap: overlap, directionConfidence: confidence)
   }
 }
 

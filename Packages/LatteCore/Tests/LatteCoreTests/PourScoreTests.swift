@@ -67,7 +67,7 @@ import Testing
                             stemLength: 0.1, fill: 0.95, tipTaper: 0.3, lobeRoundness: 0.01, surfaceRoughness: 0.002)
     switch pattern {
     case .heart: ideal.stackCount = 1; ideal.length = 0.6; ideal.width = 0.6
-    case .tulip: break
+    case .tulip: ideal.fill = 0.88  // clear crema lines between the stacks
     case .rosetta: ideal.stackCount = 8; ideal.stackThickness = 0.08; ideal.length = 0.85
     }
     #expect(PourScore(ideal, pattern: pattern).overall == 100)

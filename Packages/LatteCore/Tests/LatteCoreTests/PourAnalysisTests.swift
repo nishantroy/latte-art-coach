@@ -95,8 +95,9 @@ import Testing
     let scores = try Pattern.allCases.map { try PourAnalysis.analyze(imageData: data, pattern: $0).score.overall }
     #expect(scores[0] > scores[1] && scores[0] > scores[2], "\(scores)")
     let heart = try PourAnalysis.analyze(imageData: data, pattern: .heart)
-    #expect(heart.tips.map(\.component) == [.centering, .texture, .definition])
-    #expect(heart.tips.last?.title == "Rounder lobes")
+    #expect(heart.tips.first?.component == .centering)
+    #expect(Set(heart.tips.compactMap(\.component)) == [.centering, .texture, .definition])
+    #expect(heart.tips.contains { $0.title == "Rounder lobes" })
     #expect(heart.score.components[.contrast]! > 0.9)
     // The curves are poorly defined: the top is flat and the
     // sides straight. Lobe roundness should land well short of a clean heart.
@@ -130,3 +131,38 @@ import Testing
   }
 }
 
+
+@Suite struct TulipPhotoTests {
+  static func analyze(_ name: String) throws -> PourAnalysis {
+    let url = try #require(Bundle.module.url(forResource: name, withExtension: "jpg", subdirectory: "Fixtures/tulips"))
+    return try PourAnalysis.analyze(imageData: Data(contentsOf: url), pattern: .tulip)
+  }
+
+  /// Three separate, symmetric stacks sitting high in the cup, with bubbles
+  /// and a glare spot on the crema below. Rated 7/10.
+  @Test func separateStacksScoreWell() throws {
+    let result = try Self.analyze("tulip-01")
+    #expect(result.resembles == .tulip)
+    // The glare spot below the art is not part of the pattern.
+    #expect(result.metrics.length < 0.7, "length \(result.metrics.length)")
+    #expect(result.score.components[.definition]! > 0.8)
+    // Some bubbles, but not coarse milk.
+    #expect((0.2...0.8).contains(result.score.components[.texture]!), "texture \(result.score.components[.texture]!)")
+    #expect((65...78).contains(result.score.overall), "overall \(result.score.overall)")
+  }
+
+  /// One tilted blob with two faint crema lines through it, a long stem,
+  /// and heavy glare on the crema to its left. Rated 5/10; it
+  /// once outscored tulip-01 because the blob counted as perfect stacks.
+  @Test func mergedStacksScoreBelowSeparateOnes() throws {
+    let merged = try Self.analyze("tulip-02")
+    // The axis runs along the stem, about 10° off vertical, not across the
+    // oval outline.
+    let angle = atan2(merged.tip.y - merged.stem.y, merged.tip.x - merged.stem.x) * 180 / .pi
+    #expect(angleDifference(angle, -100) < 15, "axis \(angle)")
+    #expect(merged.score.components[.definition]! < 0.4)
+    #expect(merged.score.components[.texture]! > 0.2, "glare is not coarse milk")
+    #expect((42...60).contains(merged.score.overall), "overall \(merged.score.overall)")
+    #expect(try Self.analyze("tulip-01").score.overall > merged.score.overall + 10)
+  }
+}

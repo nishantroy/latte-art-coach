@@ -39,7 +39,8 @@ public struct PourMetrics: Sendable, Equatable, Codable {
   /// flat-topped shield ~0.10.
   public var lobeRoundness: Double
   /// Fraction of crema pixels that differ sharply from their neighborhood
-  /// (bubbles and coarse microfoam).
+  /// (bubbles and coarse microfoam), away from the art's outline and from
+  /// reflections.
   public var surfaceRoughness: Double
 }
 
@@ -393,12 +394,24 @@ public enum PourMeasurer {
       stem += 1
     }
 
-    // Roughness: crema pixels far from their 5×5 neighborhood mean.
+    // Roughness: crema pixels far from their 5×5 neighborhood mean. Crema
+    // next to the foam differs from its neighbors because of the art's own
+    // outline, and reflections on wet crema are bright streaks, not bubbles;
+    // both are skipped. Reflections: pixels well above the crema's median
+    // lightness, and a little around them.
+    var nearFoam = mask
+    for _ in 0..<3 { nearFoam = Morphology.dilate(nearFoam, size: n) }
+    var openCrema: [Float] = []
+    for i in 0..<(n * n) where surface.inside[i] == 1 && nearFoam[i] == 0 { openCrema.append(surface.l[i]) }
+    let cremaMedian = median(openCrema)
+    var reflection = [UInt8](repeating: 0, count: n * n)
+    for i in 0..<(n * n) where surface.inside[i] == 1 && nearFoam[i] == 0 && surface.l[i] > cremaMedian + 12 { reflection[i] = 1 }
+    for _ in 0..<3 { reflection = Morphology.dilate(reflection, size: n) }
     var rough = 0, cremaCount = 0
     for y in 2..<(n - 2) {
       for x in 2..<(n - 2) {
         let i = y * n + x
-        guard surface.inside[i] == 1, mask[i] == 0 else { continue }
+        guard surface.inside[i] == 1, nearFoam[i] == 0, reflection[i] == 0 else { continue }
         var sum: Float = 0
         for oy in -2...2 { for ox in -2...2 { sum += surface.l[i + oy * n + ox] } }
         if abs(surface.l[i] - sum / 25) > 5 { rough += 1 }

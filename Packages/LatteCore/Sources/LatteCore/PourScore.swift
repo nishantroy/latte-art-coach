@@ -47,8 +47,9 @@ public struct PourScore: Sendable, Equatable {
     c[.symmetry] = ramp(m.symmetry, from: 0.60, to: 0.90)
     // Foam vs crema L*; 15 is muddy, 35 is crisp white on dark crema.
     c[.contrast] = ramp(m.contrast, from: 15, to: 35)
-    // Bubbles and coarse foam on the crema; 4% rough pixels is very coarse.
-    c[.texture] = ramp(m.surfaceRoughness, from: 0.04, to: 0.005)
+    // Bubbles and coarse foam on the crema. Smooth crema measures under
+    // 0.3%; visibly bubbly crema 1.2–1.6%.
+    c[.texture] = ramp(m.surfaceRoughness, from: 0.025, to: 0.003)
 
     switch pattern {
     case .heart:
@@ -74,12 +75,18 @@ public struct PourScore: Sendable, Equatable {
       let tooShort = ramp(m.length, from: 0.60, to: 0.45)
       let tooNarrow = ramp(m.width, from: 0.45, to: 0.30)
       c[.proportion] = max(0, 1 - tooLong - tooShort - tooNarrow)
-      // Thick, rounded pushes rather than thin layers, and more than one of
+      // Rounded pushes rather than rosetta-thin layers, and more than one of
       // them, stacked along a mirror line: longer than wide, and not
       // lopsided. A swirl of two thick blobs is not a tulip. Real tulips
       // measure width/length 0.5–0.9 and symmetry 0.74+; a swirl 1.5 and 0.67.
+      // Nested wing layers (~0.16) are thinner than plain stacks (~0.28) but
+      // still a tulip.
       let stacked = ramp(m.width / max(m.length, 0.01), from: 1.3, to: 1.0) * ramp(m.symmetry, from: 0.62, to: 0.72)
-      c[.definition] = ramp(m.stackThickness, from: 0.12, to: 0.25) * (m.stackCount >= 2 ? 1 : 0.4) * stacked
+      // The stacks must stand apart, with clear crema lines between them.
+      // Separate stacks fill 0.83–0.89 of the outline; one blob with faint
+      // lines through it, 0.96.
+      let separate = ramp(m.fill, from: 0.97, to: 0.91)
+      c[.definition] = ramp(m.stackThickness, from: 0.10, to: 0.22) * (m.stackCount >= 2 ? 1 : 0.4) * stacked * separate
     case .rosetta:
       // A rosetta should run most of the way across the cup.
       let tooLong = ramp(m.length, from: 0.92, to: 0.99)
