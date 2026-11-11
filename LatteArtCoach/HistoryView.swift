@@ -30,7 +30,7 @@ struct HistoryView: View {
         .listRowBackground(Color.card)
         Section("Pours") {
           ForEach(shown) { pour in
-            NavigationLink(value: Route.pour(pour)) { PourRow(pour: pour) }
+            NavigationLink(value: Route.pour(pour)) { PourRow(pour: pour).zoomSource(pour.persistentModelID) }
           }
           .onDelete { offsets in
             for index in offsets { context.delete(shown[index]) }

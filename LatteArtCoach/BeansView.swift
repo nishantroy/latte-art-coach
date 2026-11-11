@@ -41,7 +41,7 @@ struct BeansView: View {
       } else {
         Section("Bags") {
           ForEach(beans) { bean in
-            NavigationLink(value: Route.bean(bean)) { BeanRow(bean: bean) }
+            NavigationLink(value: Route.bean(bean)) { BeanRow(bean: bean).zoomSource(bean.persistentModelID) }
           }
           .onDelete { offsets in
             for index in offsets { context.delete(beans[index]) }
@@ -208,13 +208,16 @@ struct BeanDetailView: View {
             ForEach(pours.reversed()) { pour in
               NavigationLink(value: Route.pour(pour)) {
                 HStack {
-                  Text(pour.date.formatted(date: .abbreviated, time: .shortened)).font(.subheadline)
+                  Text(pour.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()))
+                    .font(.subheadline)
                   Spacer()
                   if let stars = pour.drinkRating { Text("\(stars)★").font(.subheadline).foregroundStyle(Color.measure) }
-                  Text("\(pour.score)").font(.subheadline.bold().monospacedDigit())
+                  Text("\(pour.score)").font(.number(17)).foregroundStyle(pour.score >= 65 ? Color.espresso : Color.weak)
                   Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
                 .padding(.vertical, 4)
+                .contentShape(.rect)
+                .zoomSource(pour.persistentModelID)
               }
               .buttonStyle(.pressCard)
             }
@@ -247,9 +250,15 @@ struct BeanDetailView: View {
       Text("Over time").font(.display(.title3))
       Chart {
         ForEach(pours) { pour in
+          AreaMark(x: .value("Date", pour.date), y: .value("Score", pour.score))
+            .interpolationMethod(.monotone)
+            .foregroundStyle(LinearGradient(colors: [Color.measure.opacity(0.25), Color.measure.opacity(0)], startPoint: .top, endPoint: .bottom))
           LineMark(x: .value("Date", pour.date), y: .value("Score", pour.score))
+            .interpolationMethod(.monotone)
+            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
             .foregroundStyle(by: .value("Series", "Art score"))
           PointMark(x: .value("Date", pour.date), y: .value("Score", pour.score))
+            .symbolSize(30)
             .foregroundStyle(by: .value("Series", "Art score"))
           if let stars = pour.drinkRating {
             PointMark(x: .value("Date", pour.date), y: .value("Score", stars * 20))
@@ -261,7 +270,10 @@ struct BeanDetailView: View {
       }
       .chartForegroundStyleScale(["Art score": Color.measure, "Taste ★×20": Color.espresso])
       .chartYScale(domain: 0...100)
-      .frame(height: 150)
+      .chartYAxis { AxisMarks(values: [0, 50, 100]) { AxisGridLine(); AxisValueLabel() } }
+      .chartLegend(position: .top, alignment: .leading)
+      .chartXScale(range: .plotDimension(padding: 10))
+      .frame(height: 160)
     }
   }
 

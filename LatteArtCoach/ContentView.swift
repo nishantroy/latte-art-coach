@@ -14,6 +14,9 @@ struct ContentView: View {
   @State private var pourPath: [Route] = []
   @State private var historyPath: [Route] = []
   @State private var beansPath: [Route] = []
+  // One per tab: a pour can be a row in History and in a bag at once.
+  @Namespace private var historyZoom
+  @Namespace private var beansZoom
 
   var body: some View {
     TabView(selection: $tab) {
@@ -26,9 +29,11 @@ struct ContentView: View {
       }
       Tab("History", systemImage: "chart.line.uptrend.xyaxis", value: .history) {
         NavigationStack(path: $historyPath) { HistoryView().routes() }
+          .environment(\.zoomSpace, historyZoom)
       }
       Tab("Beans", systemImage: "bag", value: .beans) {
         NavigationStack(path: $beansPath) { BeansView().routes() }
+          .environment(\.zoomSpace, beansZoom)
       }
     }
     .tint(.crema)
@@ -47,8 +52,8 @@ extension View {
     navigationDestination(for: Route.self) { route in
       switch route {
       case .score: ScoreFlowView()
-      case .pour(let pour): PourDetailView(pour: pour)
-      case .bean(let bean): BeanDetailView(bean: bean)
+      case .pour(let pour): PourDetailView(pour: pour).zoomDestination(pour.persistentModelID)
+      case .bean(let bean): BeanDetailView(bean: bean).zoomDestination(bean.persistentModelID)
       }
     }
   }
@@ -114,13 +119,9 @@ struct StartView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.milk)
     .overlay {
-      if case .analyzing = model.state {
-        ZStack {
-          Color.milk.opacity(0.85).ignoresSafeArea()
-          ProgressView("Analyzing your pour…")
-        }
-      }
+      if isAnalyzing { AnalyzingView(pattern: pattern).transition(.opacity) }
     }
+    .animation(.settle, value: isAnalyzing)
     .toolbar(.hidden, for: .navigationBar)
     .alert("Couldn't score this one", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
       Button("OK", role: .cancel) {}
@@ -144,6 +145,10 @@ struct StartView: View {
         if let data { Task { await score(data) } }
       }
     }
+  }
+
+  private var isAnalyzing: Bool {
+    if case .analyzing = model.state { true } else { false }
   }
 
   private func score(_ data: Data) async {
@@ -170,6 +175,33 @@ struct StartView: View {
     }
     let direction = recent > earlier ? "up from" : recent < earlier ? "down from" : "same as"
     return "Last \(summary.recentCount) \(pattern.noun)s: \(recent), \(direction) \(earlier) before"
+  }
+}
+
+/// While a photo is scored: the pattern's drawing breathing on a card.
+private struct AnalyzingView: View {
+  let pattern: Pattern
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  var body: some View {
+    ZStack {
+      Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
+      VStack(spacing: 14) {
+        PatternGlyph(pattern: pattern)
+          .frame(width: 48, height: 48)
+          .foregroundStyle(Color.crema)
+          .phaseAnimator(reduceMotion ? [true] : [false, true]) { glyph, up in
+            glyph.scaleEffect(up ? 1.08 : 0.92).opacity(up ? 1 : 0.55)
+          } animation: { _ in .easeInOut(duration: 0.9) }
+        Text("Reading your \(pattern.noun)…").font(.display(.headline))
+        Text("Finding the cup, the foam and the shape").font(.footnote).foregroundStyle(.secondary)
+      }
+      .padding(.horizontal, 32)
+      .padding(.vertical, 28)
+      .background(Color.card, in: .rect(cornerRadius: 24))
+      .shadow(color: Color.espresso.opacity(0.12), radius: 24, y: 10)
+    }
+    .accessibilityElement(children: .combine)
   }
 }
 

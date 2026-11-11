@@ -6,6 +6,7 @@ struct ScoreGauge: View {
   let score: Int
   var lineWidth: CGFloat = 11
   @State private var fill: Double = 0
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   /// The same sweep and start as the icon: 78% of the circle, gap at lower left.
   nonisolated static let span = 0.78
@@ -38,6 +39,7 @@ struct ScoreGauge: View {
   }
 
   private func reveal() {
+    guard !reduceMotion else { fill = Double(score) / 100; return }
     fill = 0
     withAnimation(.spring(duration: 1.1, bounce: 0.15)) { fill = Double(score) / 100 }
   }
