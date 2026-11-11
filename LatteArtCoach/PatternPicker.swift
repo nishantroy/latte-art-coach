@@ -1,33 +1,57 @@
 import LatteCore
 import SwiftUI
 
-/// Heart / Tulip / Rosetta as cards with a drawing of each pattern.
-struct PatternPicker: View {
-  @Binding var selection: Pattern
+/// A cup from straight above with the pattern poured in it: white rim,
+/// crema, milk. The home screen's hero, and the scoring screen's.
+struct CupHero: View {
+  let pattern: Pattern
 
   var body: some View {
-    HStack(spacing: 10) {
-      ForEach(Pattern.allCases) { pattern in
-        let selected = pattern == selection
-        Button {
-          withAnimation(.settle) { selection = pattern }
-        } label: {
-          VStack(spacing: 6) {
-            PatternGlyph(pattern: pattern).frame(width: 34, height: 34)
-            Text(pattern.displayName).font(.subheadline.weight(.semibold))
+    GeometryReader { proxy in
+      let s = min(proxy.size.width, proxy.size.height)
+      ZStack {
+        // The cup's rim, lit from above.
+        Circle()
+          .fill(LinearGradient(colors: [Color(light: 0xFFFFFF, dark: 0x3A3532), Color(light: 0xE9E5E0, dark: 0x24201D)],
+                               startPoint: .top, endPoint: .bottom))
+          .shadow(color: .black.opacity(0.14), radius: s * 0.06, y: s * 0.04)
+        // The coffee: darker toward the edge, as crema is.
+        Circle()
+          .fill(RadialGradient(colors: [Color(light: 0xC68A52, dark: 0xB27A45), Color(light: 0x9A5A2B, dark: 0x82491F),
+                                        Color(light: 0x4E2C16, dark: 0x3C2111)],
+                               center: .center, startRadius: 0, endRadius: s * 0.43))
+          .padding(s * 0.075)
+          .overlay {
+            // The rim's inner edge throws a thin shadow onto the coffee.
+            Circle().strokeBorder(.black.opacity(0.25), lineWidth: s * 0.012).blur(radius: s * 0.01).padding(s * 0.075)
           }
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 12)
-          .foregroundStyle(selected ? Color.white : Color.espresso)
-          .background(selected ? Color.crema : Color.card, in: .rect(cornerRadius: 14))
-          .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.crema.opacity(selected ? 0 : 0.25)))
-        }
-        .buttonStyle(.press)
-        .accessibilityLabel(pattern.displayName)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        PatternGlyph(pattern: pattern)
+          .foregroundStyle(Color(light: 0xFBF6EE, dark: 0xF4ECE0))
+          .frame(width: s * 0.4, height: s * 0.4)
+          .shadow(color: .black.opacity(0.15), radius: s * 0.01)
+          .id(pattern)
+          .transition(.asymmetric(insertion: .scale(scale: 0.6).combined(with: .opacity),
+                                  removal: .scale(scale: 1.2).combined(with: .opacity)))
       }
+      .frame(width: s, height: s)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    .sensoryFeedback(.selection, trigger: selection)
+    .aspectRatio(1, contentMode: .fit)
+    .accessibilityHidden(true)
+  }
+}
+
+/// The capture button: a white disc in a ring, like the Camera app's.
+struct Shutter: View {
+  var symbol = "camera.fill"
+
+  var body: some View {
+    ZStack {
+      Circle().strokeBorder(Color.espresso.opacity(0.85), lineWidth: 3).frame(width: 82, height: 82)
+      Circle().fill(Color.crema).frame(width: 68, height: 68)
+      Image(systemName: symbol).font(.title2.weight(.semibold)).foregroundStyle(.white)
+    }
+    .contentShape(.circle)
   }
 }
 

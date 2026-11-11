@@ -72,50 +72,50 @@ struct StartView: View {
   @Query(sort: \Pour.date) private var pours: [Pour]
 
   var body: some View {
-    VStack(spacing: 20) {
-      Spacer(minLength: 0)
-      Image("IconArt")
-        .resizable()
-        .frame(width: 96, height: 96)
-        .clipShape(.rect(cornerRadius: 22))
-        .shadow(color: Color.espresso.opacity(0.18), radius: 12, y: 6)
-        .accessibilityHidden(true)
-      VStack(spacing: 6) {
-        Text("Lattelier").font(.display(.largeTitle))
-        Text("Pour, snap it from above, and see what to change next time.")
-          .multilineTextAlignment(.center)
-          .foregroundStyle(.secondary)
-      }
-      if let progress = progressLine {
-        Label(progress, systemImage: "chart.line.uptrend.xyaxis")
-          .font(.subheadline)
-          .foregroundStyle(Color.espresso)
-          .card()
-          .accessibilityIdentifier("progress-line")
-      }
-      Spacer(minLength: 0)
-      VStack(alignment: .leading, spacing: 10) {
-        Text("What did you pour?").font(.display(.title3))
-        PatternPicker(selection: $pattern)
-      }
-      VStack(spacing: 12) {
-        if LiveCamera.isAvailable {
-          Button {
-            showingCamera = true
-          } label: {
-            Label("Take a photo", systemImage: "camera.fill").frame(maxWidth: .infinity)
-          }
-          .buttonStyle(.borderedProminent)
+    VStack(spacing: 0) {
+      HStack(alignment: .firstTextBaseline) {
+        Text("Lattelier").font(.system(.largeTitle, weight: .bold))
+        Spacer()
+        if let progress = progressLine {
+          Label(progress, systemImage: "chart.line.uptrend.xyaxis")
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .accessibilityIdentifier("progress-line")
         }
-        PhotosPicker(selection: $pickerItem, matching: .images) {
-          Label("Choose a photo", systemImage: "photo.on.rectangle").frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.bordered)
       }
-      .controlSize(.large)
+      Spacer(minLength: 12)
+      CupHero(pattern: pattern)
+        .frame(maxWidth: 280)
+        .padding(.horizontal, 24)
+        .contentShape(.circle)
+        .gesture(DragGesture(minimumDistance: 20).onEnded { drag in
+          let all = Pattern.allCases, i = all.firstIndex(of: pattern) ?? 0
+          let step = drag.translation.width < -40 ? 1 : drag.translation.width > 40 ? -1 : 0
+          let next = min(max(i + step, 0), all.count - 1)
+          if next != i { withAnimation(.glide) { pattern = all[next] } }
+        })
+        .accessibilityLabel("\(pattern.displayName), swipe to change")
+      Text("Pour, then snap it from straight above.")
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .padding(.top, 24)
+      Spacer(minLength: 12)
+      SlidingPicker(options: Pattern.allCases, selection: $pattern) { option, _ in
+        HStack(spacing: 6) {
+          PatternGlyph(pattern: option).frame(width: 16, height: 16)
+          Text(option.displayName).font(.subheadline.weight(.semibold))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(option.displayName)
+      }
+      .padding(.bottom, 28)
+      captureControls
     }
-    .padding(.horizontal, 24)
-    .padding(.vertical, 16)
+    .padding(.horizontal, 20)
+    .padding(.top, 8)
+    .padding(.bottom, 20)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.milk)
     .overlay {
@@ -145,6 +145,36 @@ struct StartView: View {
         if let data { Task { await score(data) } }
       }
     }
+  }
+
+  /// A shutter in the middle, the library to its left, like the Camera app.
+  /// Without a camera (the Simulator), the shutter opens the library.
+  private var captureControls: some View {
+    HStack {
+      if LiveCamera.isAvailable {
+        PhotosPicker(selection: $pickerItem, matching: .images) {
+          Image(systemName: "photo.on.rectangle")
+            .font(.title3.weight(.medium))
+            .frame(width: 56, height: 56)
+            .glassEffect(.regular.interactive(), in: .circle)
+        }
+        .accessibilityLabel("Choose a photo")
+        Spacer()
+        Button { showingCamera = true } label: { Shutter() }
+          .buttonStyle(.press)
+          .accessibilityLabel("Take a photo")
+        Spacer()
+        Color.clear.frame(width: 56, height: 56)
+      } else {
+        Spacer()
+        PhotosPicker(selection: $pickerItem, matching: .images) { Shutter(symbol: "photo.on.rectangle") }
+          .buttonStyle(.press)
+          .accessibilityLabel("Choose a photo")
+        Spacer()
+      }
+    }
+    .foregroundStyle(Color.espresso)
+    .sensoryFeedback(.impact(weight: .medium), trigger: showingCamera) { _, now in now }
   }
 
   private var isAnalyzing: Bool {
@@ -182,26 +212,35 @@ struct StartView: View {
 private struct AnalyzingView: View {
   let pattern: Pattern
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @State private var spin = false
 
   var body: some View {
     ZStack {
       Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
-      VStack(spacing: 14) {
-        PatternGlyph(pattern: pattern)
-          .frame(width: 48, height: 48)
-          .foregroundStyle(Color.crema)
-          .phaseAnimator(reduceMotion ? [true] : [false, true]) { glyph, up in
-            glyph.scaleEffect(up ? 1.08 : 0.92).opacity(up ? 1 : 0.55)
-          } animation: { _ in .easeInOut(duration: 0.9) }
-        Text("Reading your \(pattern.noun)…").font(.display(.headline))
-        Text("Finding the cup, the foam and the shape").font(.footnote).foregroundStyle(.secondary)
+      VStack(spacing: 28) {
+        ZStack {
+          CupHero(pattern: pattern).frame(width: 150, height: 150)
+          // A sweep round the cup, like a scanner.
+          Circle()
+            .trim(from: 0, to: 0.25)
+            .stroke(AngularGradient(colors: [Color.measure.opacity(0), Color.measure], center: .center,
+                                    startAngle: .degrees(0), endAngle: .degrees(90)),
+                    style: StrokeStyle(lineWidth: 3, lineCap: .round))
+            .frame(width: 178, height: 178)
+            .rotationEffect(.degrees(spin ? 360 : 0))
+            .opacity(reduceMotion ? 0 : 1)
+        }
+        VStack(spacing: 6) {
+          Text("Reading your \(pattern.noun)…").font(.headline)
+          Text("Finding the cup, the foam and the shape").font(.footnote).foregroundStyle(.secondary)
+        }
       }
-      .padding(.horizontal, 32)
-      .padding(.vertical, 28)
-      .background(Color.card, in: .rect(cornerRadius: 24))
-      .shadow(color: Color.espresso.opacity(0.12), radius: 24, y: 10)
     }
     .accessibilityElement(children: .combine)
+    .onAppear {
+      guard !reduceMotion else { return }
+      withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) { spin = true }
+    }
   }
 }
 
