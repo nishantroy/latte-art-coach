@@ -29,6 +29,7 @@ targets:
         INFOPLIST_KEY_NSCameraUsageDescription: "Take a photo of your latte art to score it. Photos are analyzed on this iPhone and never uploaded."
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
   LatteArtCoachUITests:
