@@ -27,6 +27,7 @@ struct BeansView: View {
       } header: {
         Text("What you like")
       }
+      .listRowBackground(Color.card)
       .accessibilityIdentifier("preferences")
 
       if beans.isEmpty {
@@ -47,6 +48,7 @@ struct BeansView: View {
             try? context.save()
           }
         }
+        .listRowBackground(Color.card)
       }
     }
     .scrollContentBackground(.hidden)
@@ -83,22 +85,50 @@ private struct BeanRow: View {
 
   var body: some View {
     let summary = bean.summary
-    VStack(alignment: .leading, spacing: 3) {
-      HStack {
-        Text(bean.name).font(.body.weight(.semibold))
-        Spacer()
-        if let rating = summary.averageRating {
-          Text(String(format: "%.1f★", rating)).font(.subheadline.monospacedDigit()).foregroundStyle(Color.measure)
+    HStack(spacing: 12) {
+      RoastBadge(level: bean.roastLevel)
+      VStack(alignment: .leading, spacing: 3) {
+        HStack {
+          Text(bean.name).font(.body.weight(.semibold))
+          Spacer()
+          if let rating = summary.averageRating {
+            Text(String(format: "%.1f★", rating)).font(.subheadline.monospacedDigit()).foregroundStyle(Color.measure)
+          }
         }
+        Text(BeanFacts.line(bean)).font(.footnote).foregroundStyle(.secondary)
+        Text(summary.pourCount == 0 ? "No pours yet"
+          : "\(summary.pourCount) pour\(summary.pourCount == 1 ? "" : "s") · art avg \(Int((summary.averageScore ?? 0).rounded()))")
+          .font(.footnote)
+          .foregroundStyle(.secondary)
       }
-      Text(BeanFacts.line(bean)).font(.footnote).foregroundStyle(.secondary)
-      Text(summary.pourCount == 0 ? "No pours yet"
-        : "\(summary.pourCount) pour\(summary.pourCount == 1 ? "" : "s") · art avg \(Int((summary.averageScore ?? 0).rounded()))")
-        .font(.footnote)
-        .foregroundStyle(.secondary)
     }
+    .padding(.vertical, 2)
     .accessibilityElement(children: .combine)
     .accessibilityIdentifier("bean-row")
+  }
+}
+
+/// A bag glyph in the roast's color: pale for light, near black for dark.
+struct RoastBadge: View {
+  let level: BeanLabel.RoastLevel?
+
+  var body: some View {
+    Image(systemName: "bag.fill")
+      .font(.system(size: 17, weight: .semibold))
+      .foregroundStyle(level == nil ? Color.crema : .white)
+      .frame(width: 40, height: 40)
+      .background(fill, in: .rect(cornerRadius: 12))
+      .accessibilityHidden(true)
+  }
+
+  private var fill: Color {
+    switch level {
+    case .light: Color(light: 0xC9925A, dark: 0xC9925A)
+    case .medium: Color(light: 0xA0642F, dark: 0xB27440)
+    case .mediumDark: Color(light: 0x6E4122, dark: 0x8A5532)
+    case .dark: Color(light: 0x3B2416, dark: 0x5A3826)
+    case nil: Color.crema.opacity(0.14)
+    }
   }
 }
 

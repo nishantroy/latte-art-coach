@@ -69,6 +69,7 @@ struct DrinkLogEditor: View {
         } header: {
           Text("How it tasted")
         }
+        .listRowBackground(Color.card)
         Section {
           number("Dose", value: $pour.doseGrams, unit: "g")
           number("Yield", value: $pour.yieldGrams, unit: "g")
@@ -82,6 +83,7 @@ struct DrinkLogEditor: View {
         } footer: {
           Text("New pours start from your last pour's details, so you only change what changed.")
         }
+        .listRowBackground(Color.card)
         Section("Beans") {
           Picker("Beans", selection: $pour.bean) {
             Text("None").tag(Bean?.none)
@@ -91,12 +93,14 @@ struct DrinkLogEditor: View {
           }
           Button("Add new beans…") { addingBean = true }
         }
+        .listRowBackground(Color.card)
         Section("Milk") {
           Picker("Milk", selection: Binding(get: { pour.milk }, set: { pour.milk = $0 })) {
             Text("Not logged").tag(BrewDetails.Milk?.none)
             ForEach(BrewDetails.Milk.allCases) { Text($0.displayName).tag(BrewDetails.Milk?.some($0)) }
           }
         }
+        .listRowBackground(Color.card)
       }
       .scrollContentBackground(.hidden)
       .background(Color.milk)
@@ -187,10 +191,12 @@ struct NewBeanForm: View {
         } footer: {
           Text(scanNote ?? "Photograph the label and the details fill in. Read on this iPhone; nothing is uploaded.")
         }
+        .listRowBackground(Color.card)
         Section("Coffee") {
           TextField("Name, e.g. Guji Hambela", text: $name)
           TextField("Roaster", text: $roaster)
         }
+        .listRowBackground(Color.card)
         Section {
           Toggle("Roast date on the bag", isOn: $knowsRoastDate)
           if knowsRoastDate {
@@ -207,6 +213,7 @@ struct NewBeanForm: View {
             ? "Roast level guessed from the bag; change it if you know otherwise."
             : "Freshness changes the crema, and the crema changes how your art turns out.")
         }
+        .listRowBackground(Color.card)
         Section("From the bag") {
           TextField("Origin", text: $origin)
           TextField("Process, e.g. washed", text: $process)
@@ -214,9 +221,11 @@ struct NewBeanForm: View {
           TextField("Altitude", text: $altitude)
           TextField("Tasting notes, comma separated", text: $notes, axis: .vertical)
         }
+        .listRowBackground(Color.card)
         Section("Your notes") {
           TextField("Anything to remember about this bag", text: $myNotes, axis: .vertical)
         }
+        .listRowBackground(Color.card)
         if let labelText, !labelText.isEmpty {
           Section {
             DisclosureGroup("Text read from the bag") {
@@ -224,6 +233,7 @@ struct NewBeanForm: View {
               Button { UIPasteboard.general.string = labelText } label: { Label("Copy", systemImage: "doc.on.doc") }
             }
           }
+          .listRowBackground(Color.card)
         }
       }
       .scrollContentBackground(.hidden)
