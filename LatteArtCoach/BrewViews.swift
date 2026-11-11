@@ -216,6 +216,14 @@ struct NewBeanForm: View {
         Section("Your notes") {
           TextField("Anything to remember about this bag", text: $myNotes, axis: .vertical)
         }
+        if let labelText, !labelText.isEmpty {
+          Section {
+            DisclosureGroup("Text read from the bag") {
+              Text(labelText).font(.footnote.monospaced()).textSelection(.enabled)
+              Button { UIPasteboard.general.string = labelText } label: { Label("Copy", systemImage: "doc.on.doc") }
+            }
+          }
+        }
       }
       .scrollContentBackground(.hidden)
       .background(Color.milk)
