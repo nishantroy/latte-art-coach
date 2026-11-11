@@ -45,9 +45,12 @@ public struct BeanLabel: Sendable, Equatable {
 public struct LabelLine: Sendable, Equatable {
   public var text: String
   public var height: Double
-  public init(_ text: String, height: Double = 0) {
+  /// Left edge as a fraction of the image width, when known.
+  public var left: Double?
+  public init(_ text: String, height: Double = 0, left: Double? = nil) {
     self.text = text
     self.height = height
+    self.left = left
   }
 }
 
@@ -81,8 +84,8 @@ public enum BeanLabelParser {
   // MARK: Name and roaster
 
   /// "Civitas Blend", printed on one line or, as text recognition often
-  /// returns it, as "Civitas" and "Blend" on lines of the same size with a
-  /// smaller badge between them. Sentences that mention a blend don't count.
+  /// returns it, as "Civitas" over "Blend", sometimes with a badge ("Trade")
+  /// read in between. Sentences that mention a blend don't count.
   static func blendName(in lines: [LabelLine]) -> String? {
     func words(_ s: String) -> [Substring] { s.split(separator: " ") }
     func isTitle(_ s: String) -> Bool { (1...4).contains(words(s).count) && !s.contains(where: \.isNumber) }
@@ -90,26 +93,36 @@ public enum BeanLabelParser {
       let text = line.text.trimmingCharacters(in: .whitespaces)
       guard let last = words(text).last, last.lowercased() == "blend", isTitle(text) else { continue }
       if words(text).count > 1 { return text }
-      // "Blend" alone: join the nearest line above printed at a similar size.
-      for prior in lines[max(0, i - 2)..<i].reversed() {
-        let similar = line.height == 0 || abs(prior.height - line.height) <= 0.3 * line.height
-        if similar, isTitle(prior.text), words(prior.text).count <= 2 { return prior.text + " " + text }
+      // "Blend" alone: the first word is one of the two lines above, set
+      // flush with it, or failing that the one closest in size. A badge sits
+      // off to one side and is set smaller. Ties go to the nearer line.
+      let candidates = lines[max(0, i - 2)..<i].reversed().filter { isTitle($0.text) && words($0.text).count <= 2 }
+      let first = candidates.min { a, b in
+        if let l = line.left, let la = a.left, let lb = b.left { return abs(la - l) < abs(lb - l) }
+        return abs(a.height - line.height) < abs(b.height - line.height)
       }
+      if let first { return first.text + " " + text }
     }
     return nil
   }
 
   /// The first line naming a roaster ("Huckleberry Roasters", "Onyx Coffee
-  /// Roastery"), not a sentence that mentions roasting.
+  /// Roastery"), not a sentence that mentions roasting. Text recognition
+  /// may split the name over two lines or tack a stray letter on the end.
   static func roaster(in texts: [String]) -> String? {
-    let pattern = /\b(roasters?|roastery|roasting co\.?|roasting company|coffee co\.?|coffee company)$/.ignoresCase()
-    let line = texts.first { text in
-      let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-      return (2...5).contains(t.split(separator: " ").count) && t.firstMatch(of: pattern) != nil
-    }?.trimmingCharacters(in: .whitespacesAndNewlines)
-    // Labels set the roaster in capitals; "HUCKLEBERRY ROASTERS" reads
-    // better as "Huckleberry Roasters".
-    return line.map { $0 == $0.uppercased() ? $0.capitalized : $0 }
+    let pattern = /^(.*?\b(?:roasters?|roastery|roasting co\.?|roasting company|coffee co\.?|coffee company))\b(.{0,3})$/.ignoresCase()
+    func clean(_ s: String) -> String { s.trimmingCharacters(in: .whitespacesAndNewlines) }
+    for (i, text) in texts.enumerated() {
+      guard let m = clean(text).firstMatch(of: pattern) else { continue }
+      var name = String(m.1)
+      // "ROASTERS" alone: the name is on the line above.
+      if name.split(separator: " ").count == 1, i > 0 { name = clean(texts[i - 1]) + " " + name }
+      guard (2...5).contains(name.split(separator: " ").count), !name.contains(where: \.isNumber) else { continue }
+      // Labels set the roaster in capitals; "HUCKLEBERRY ROASTERS" reads
+      // better as "Huckleberry Roasters".
+      return name == name.uppercased() ? name.capitalized : name
+    }
+    return nil
   }
 
   // MARK: Roast date
@@ -207,15 +220,18 @@ public enum BeanLabelParser {
     "honey": 0, "honeysuckle": 2, "cane sugar": 0, "panela": 0, "raisin": 0, "fig": 0, "date": 0, "red wine": 0,
     "wine": 0, "rum": 0, "vanilla": 0, "almond": 0, "hazelnut": -1, "nutty": -1, "peanut": -1, "walnut": -1,
     "pecan": -1, "milk chocolate": -1, "chocolate": -1, "cocoa": -1, "caramel": -1, "toffee": -1,
-    "butterscotch": -1, "brown sugar": -1, "maple": -1, "dark chocolate": -2, "molasses": -2, "smoky": -2,
+    "butterscotch": -1, "brown sugar": -1, "dark sugar": -1, "dark sugars": -1, "maple": -1, "dark chocolate": -2, "molasses": -2, "smoky": -2,
     "smoke": -2, "tobacco": -2, "cedar": -1, "spice": -1, "cinnamon": -1, "clove": -1, "licorice": -2,
     "earthy": -2, "malt": -1,
   ]
 
   static func tastingNotes(in texts: [String]) -> [String] {
     var notes: [String] = []
-    // Lines about roasting ("Roasted on…", "Medium roast") aren't notes.
-    for text in texts where !text.lowercased().contains("roast") {
+    // Lines about roasting ("Roasted on…", "Medium roast") aren't notes,
+    // nor is a heading such as "BLEND DATE" or "Best before date".
+    let dateHeading = /\b(?:blend|roast(?:ed)?|pack(?:ed)?|best(?: before| by)?|harvest|production|bag|crop)\s+date\b/.ignoresCase()
+    for text in texts where !text.lowercased().contains("roast") && text.firstMatch(of: dateHeading) == nil
+      && !(text == text.uppercased() && text.lowercased().contains("date")) {
       let line = text.lowercased()
       // Split descriptor lists: "Jasmine, peach & black tea" / "Cocoa · Cherry | Toffee".
       let parts = line.replacingOccurrences(of: " and ", with: ",").split(whereSeparator: { ",·|/&•+".contains($0) })

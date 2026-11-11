@@ -68,17 +68,34 @@ import Testing
   /// split over two lines with a "Trade" badge between them, and a sentence
   /// below mentions the blend again.
   @Test func readsANameAndRoasterPrintedPlainly() {
+    // Heights and left edges as read at the app's 2400 px.
     let lines = [
-      ("A BAG OF TASTY COFFEE", 0.021), ("FROM YOUR FRIENDS AT", 0.016), ("HUCKLEBERRY ROASTERS", 0.015),
-      ("DENVER, COLORADO", 0.016), ("Civitas", 0.016), ("Trade", 0.009), ("Blend", 0.015),
-      ("dark sugars • chocolate • toffee", 0.013), ("Our Civitas blend is meant for the fan", 0.014),
-      ("roasting team, we hope you enjoy our", 0.016), ("ROAST/BLEND DATE", 0.014), ("10/30/26", 0.007),
-    ].map { LabelLine($0.0, height: $0.1) }
+      ("A BAG OF TASTY COFFEE", 0.022, 0.33), ("FROM YOUR FRIENDS AT", 0.018, 0.33),
+      ("HUCKLEBERRY ROASTERS", 0.017, 0.32), ("DENVER, COLORADO", 0.021, 0.33), ("Civitas", 0.016, 0.33),
+      ("Trade", 0.012, 0.51), ("Blend", 0.015, 0.33), ("dark sugars • chocolate • toffee", 0.013, 0.33),
+      ("Our Civitas blend is meant for the fan", 0.013, 0.33), ("roasting team, we hope you enjoy our", 0.016, 0.33),
+      ("ROAST/BLEND DATE", 0.014, 0.35), ("10/30/26", 0.006, 0.35),
+    ].map { LabelLine($0.0, height: $0.1, left: $0.2) }
     let label = BeanLabelParser.parse(lines, today: Self.today, calendar: Self.utc)
-    #expect(label.name == "Civitas Blend")
+    #expect(label.name == "Civitas Blend", "not the badge: \(label.name ?? "-")")
     #expect(label.roaster == "Huckleberry Roasters")
     #expect(label.roastDate == Self.day(2026, 10, 30))
-    #expect(label.tastingNotes == ["chocolate", "toffee"])
+    #expect(label.tastingNotes == ["dark sugars", "chocolate", "toffee"])
+  }
+
+  /// The same label as text recognition can also split it: the roaster over
+  /// two lines with a stray letter from the big brand mark, and the date
+  /// heading broken off its "ROAST/".
+  @Test func readsTheSameLabelSplitDifferently() {
+    let label = Self.parse(["HUCKLEBERRY", "ROASTERS U", "Civitas", "Blend", "dark sugars • chocolate • toffee",
+                            "ROAST/", "BLEND DATE", "DATE", "10/30/26"])
+    #expect(label.roaster == "Huckleberry Roasters")
+    #expect(label.name == "Civitas Blend")
+    #expect(label.tastingNotes == ["dark sugars", "chocolate", "toffee"], "a date heading isn't a note")
+  }
+
+  @Test func keepsDatesAsAFlavor() {
+    #expect(Self.parse(["Notes: fig, date, cocoa"]).tastingNotes == ["fig", "date", "cocoa"])
   }
 
   @Test func leavesNameAndRoasterToTheModelWhenUnclear() {

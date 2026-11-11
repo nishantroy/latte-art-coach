@@ -14,7 +14,7 @@ public enum LabelReader {
     return observations
       .sorted { $0.boundingBox.origin.y + $0.boundingBox.height > $1.boundingBox.origin.y + $1.boundingBox.height }
       .compactMap { obs in
-        obs.topCandidates(1).first.map { LabelLine($0.string, height: Double(obs.boundingBox.height)) }
+        obs.topCandidates(1).first.map { LabelLine($0.string, height: Double(obs.boundingBox.height), left: Double(obs.boundingBox.origin.x)) }
       }
   }
 
