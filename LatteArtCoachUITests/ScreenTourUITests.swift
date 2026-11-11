@@ -6,6 +6,7 @@ import XCTest
 @MainActor
 final class ScreenTourUITests: XCTestCase {
   let app = XCUIApplication()
+  private var analyzingCaptured = false
 
   func testTourEveryScreen() throws {
     continueAfterFailure = true
@@ -87,7 +88,11 @@ final class ScreenTourUITests: XCTestCase {
       sleep(1)
       capture("08-history-detail")
     }
-    app.tabBars.buttons["Beans"].tap()
+    // A tab tap during a push animation can be dropped; retry.
+    for _ in 1...3 where !app.navigationBars["Beans"].exists {
+      app.tabBars.buttons["Beans"].tap()
+      _ = app.navigationBars["Beans"].waitForExistence(timeout: 3)
+    }
     sleep(1)
     capture("09-beans")
     let bean = app.descendants(matching: .any).matching(identifier: "bean-row").firstMatch
@@ -118,6 +123,10 @@ final class ScreenTourUITests: XCTestCase {
     // while the picker is up and the rating step hasn't appeared.
     for _ in 1...3 {
       newest.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+      if !analyzingCaptured, app.staticTexts["Finding the cup, the foam and the shape"].waitForExistence(timeout: 3) {
+        analyzingCaptured = true
+        capture("01b-analyzing")
+      }
       if app.buttons["rating-7"].waitForExistence(timeout: 20) || !newest.exists { break }
     }
     XCTAssertTrue(app.buttons["rating-7"].waitForExistence(timeout: 30))
