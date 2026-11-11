@@ -5,6 +5,7 @@
 #   UI=1 scripts/test.sh                  # also UI tests on the iPhone 17 simulator
 #   UI=1 SIM_NAME="iPhone Air" scripts/test.sh
 #   UI=1 ONLY=LatteArtCoachUITests/ScreenTourUITests scripts/test.sh   # one UI test class
+#   UI=1 APPEARANCE=dark ONLY=... scripts/test.sh                       # in dark mode
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
@@ -42,6 +43,8 @@ UDID="$(xcrun simctl list devices available | grep -F "    $SIM_NAME (" | head -
 # Boot up front: letting xcodebuild cold-boot the simulator can fail to launch the runner.
 xcrun simctl boot "$UDID" 2>/dev/null || true
 xcrun simctl bootstatus "$UDID" -b >/dev/null
+# APPEARANCE=dark runs the UI tests in dark mode.
+xcrun simctl ui "$UDID" appearance "${APPEARANCE:-light}"
 # The flow test picks the newest library photo; make that fixture pour 3.
 xcrun simctl addmedia "$UDID" Packages/LatteCore/Tests/LatteCoreTests/Fixtures/pours/pour-03.jpg
 echo "== UI tests on $SIM_NAME"
