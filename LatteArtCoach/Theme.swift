@@ -68,6 +68,31 @@ extension ButtonStyle where Self == PressStyle {
   static var pressCard: PressStyle { PressStyle(scale: 0.985) }
 }
 
+/// A 0–1 bar for a measured part of the score: amber, or terracotta when
+/// it's weak. Fills in when it appears.
+struct Meter: View {
+  let value: Double
+  @State private var shown = 0.0
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  var body: some View {
+    GeometryReader { proxy in
+      ZStack(alignment: .leading) {
+        Capsule().fill(Color.crema.opacity(0.15))
+        Capsule()
+          .fill(value >= 0.5 ? Color.measure : Color.weak)
+          .frame(width: max(6, proxy.size.width * min(max(shown, 0), 1)))
+      }
+    }
+    .frame(height: 6)
+    .onAppear {
+      if reduceMotion { shown = value } else { withAnimation(.smooth(duration: 0.7).delay(0.1)) { shown = value } }
+    }
+    .onChange(of: value) { withAnimation(.settle) { shown = value } }
+    .accessibilityHidden(true)
+  }
+}
+
 enum Theme {
   /// Serif navigation titles everywhere.
   @MainActor static func configure() {

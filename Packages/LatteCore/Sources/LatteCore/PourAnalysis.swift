@@ -99,9 +99,9 @@ public struct PourAnalysis: Sendable {
         let u = i00 * dx + i01 * dy, v = i01 * dx + i11 * dy
         let gx = Int(u * half + half), gy = Int(v * half + half)
         guard gx >= 0, gy >= 0, gx < n, gy < n, mask[gy * n + gx] == 1 else { continue }
-        // Premultiplied mint at ~55% opacity.
+        // Opaque white: a mask. The app picks the color and opacity.
         let o = (y * width + x) * 4
-        pixels[o] = 48; pixels[o + 1] = 121; pixels[o + 2] = 102; pixels[o + 3] = 140
+        pixels[o] = 255; pixels[o + 1] = 255; pixels[o + 2] = 255; pixels[o + 3] = 255
       }
     }
     return RGBAImage(width: width, height: height, pixels: pixels)

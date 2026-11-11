@@ -113,7 +113,7 @@ struct ResultView: View {
             let value = analysis.score.components[component] ?? 0
             HStack {
               Text(component.label(for: analysis.pattern)).font(.subheadline).frame(width: 116, alignment: .leading)
-              ProgressView(value: value).tint(value >= 0.5 ? Color.measure : Color.weak)
+              Meter(value: value)
               Text("\(Int((value * 100).rounded()))").font(.subheadline.monospacedDigit()).frame(width: 32, alignment: .trailing)
             }
           }
@@ -165,12 +165,11 @@ extension PourScore.Component {
   }
 }
 
-/// The foam the analysis found, in the app's amber "measured" color (the
-/// mask's own color is only a placeholder).
+/// The foam the analysis found, in the app's amber "measured" color.
 struct FoamTint: View {
   let mask: CGImage
   var body: some View {
-    Color.measure.mask { Image(decorative: mask, scale: 1).resizable() }
+    Color.measure.opacity(0.75).mask { Image(decorative: mask, scale: 1).resizable() }
   }
 }
 
@@ -188,7 +187,7 @@ struct PourPhotoView: View {
       ZStack(alignment: .topLeading) {
         imageLayer(Image(uiImage: photo).resizable(), crop: crop, scale: scale)
         if showOverlay, let overlay = analysis.foamOverlay.makeCGImage() {
-          imageLayer(FoamTint(mask: overlay).opacity(0.85), crop: crop, scale: scale)
+          imageLayer(FoamTint(mask: overlay), crop: crop, scale: scale)
             .transition(.opacity)
         }
         if showOverlay {
