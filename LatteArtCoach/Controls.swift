@@ -25,6 +25,19 @@ struct RulerDial: View {
 
   var body: some View {
     VStack(spacing: 6) {
+      readout
+      // VoiceOver adjusts the readout instead (swipe up or down).
+      ruler.accessibilityHidden(true)
+    }
+    .onAppear { position = index(of: value ?? typical) }
+    .onChange(of: value) { _, new in
+      // Cleared or set elsewhere: move the ruler without counting it as a turn.
+      if phase == .idle, let new { position = index(of: new) }
+    }
+  }
+
+  private var readout: some View {
+    VStack(spacing: 6) {
       HStack {
         Text(title).eyebrow()
         Spacer()
@@ -43,7 +56,6 @@ struct RulerDial: View {
       }
       .frame(maxWidth: .infinity)
       .animation(.snappy(duration: 0.15), value: value)
-      ruler
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(title)
@@ -52,11 +64,6 @@ struct RulerDial: View {
       let current = value ?? typical
       value = min(max(current + (direction == .increment ? step : -step), range.lowerBound), range.upperBound)
       position = index(of: value!)
-    }
-    .onAppear { position = index(of: value ?? typical) }
-    .onChange(of: value) { _, new in
-      // Cleared or set elsewhere: move the ruler without counting it as a turn.
-      if phase == .idle, let new { position = index(of: new) }
     }
   }
 

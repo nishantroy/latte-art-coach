@@ -44,6 +44,18 @@ final class ScreenTourUITests: XCTestCase {
       brew.tap()
       sleep(1)
       capture("04-brew-editor")
+      // Turn the dose dial: drag its ruler left, which raises the dose.
+      let dose = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Dose'")).firstMatch
+      if dose.waitForExistence(timeout: 3) {
+        // The ruler sits under the readout (the element) and runs off
+        // screen both ways; drag across its visible middle.
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let y = dose.frame.maxY + 28, mid = app.windows.firstMatch.frame.midX
+        origin.withOffset(CGVector(dx: mid + 60, dy: y))
+          .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: mid - 40, dy: y)))
+        sleep(1)
+        capture("04b-dose-dialed")
+      }
       let add = app.buttons["Add new beans…"]
       if add.waitForExistence(timeout: 3) {
         add.tap()
