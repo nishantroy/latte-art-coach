@@ -63,46 +63,93 @@ struct DrinkLogEditor: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        Section {
-          TasteFields(pour: pour)
-        } header: {
-          Text("How it tasted")
-        }
-        .listRowBackground(Color.card)
-        Section {
-          number("Dose", value: $pour.doseGrams, unit: "g")
-          number("Yield", value: $pour.yieldGrams, unit: "g")
-          number("Shot time", value: $pour.shotSeconds, unit: "s")
-          LabeledContent("Grind setting") {
-            TextField("e.g. 12", text: Binding(get: { pour.grindSetting ?? "" }, set: { pour.grindSetting = $0.isEmpty ? nil : $0 }))
-              .multilineTextAlignment(.trailing)
+      ScrollView {
+        VStack(spacing: 16) {
+          VStack(alignment: .leading, spacing: 16) {
+            Text("How it tasted").font(.display(.headline))
+            TasteFields(pour: pour)
           }
-        } header: {
-          Text("Espresso")
-        } footer: {
-          Text("New pours start from your last pour's details, so you only change what changed.")
-        }
-        .listRowBackground(Color.card)
-        Section("Beans") {
-          Picker("Beans", selection: $pour.bean) {
-            Text("None").tag(Bean?.none)
-            ForEach(beans) { bean in
-              Text(bean.roaster.map { "\(bean.name) · \($0)" } ?? bean.name).tag(Bean?.some(bean))
+          .card()
+
+          VStack(alignment: .leading, spacing: 22) {
+            HStack(alignment: .firstTextBaseline) {
+              Text("Espresso").font(.display(.headline))
+              Spacer()
+              if let ratio {
+                Text("Ratio 1:\(ratio)").font(.number(15)).foregroundStyle(Color.crema)
+                  .contentTransition(.numericText())
+              }
             }
+            RulerDial(title: "Dose", unit: "g", value: $pour.doseGrams, range: 5...30, step: 0.1, typical: 18)
+            RulerDial(title: "Yield", unit: "g", value: $pour.yieldGrams, range: 10...80, step: 0.5, typical: 36)
+            RulerDial(title: "Shot time", unit: "s", value: $pour.shotSeconds, range: 10...60, step: 1, typical: 28)
+            HStack {
+              Text("Grind setting").eyebrow()
+              Spacer()
+              TextField("e.g. 12", text: Binding(get: { pour.grindSetting ?? "" }, set: { pour.grindSetting = $0.isEmpty ? nil : $0 }))
+                .font(.number(17))
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 140)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.well.opacity(0.6), in: .capsule)
+            Text("New pours start from your last pour's details, so you only change what changed.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
           }
-          Button("Add new beans…") { addingBean = true }
-        }
-        .listRowBackground(Color.card)
-        Section("Milk") {
-          Picker("Milk", selection: Binding(get: { pour.milk }, set: { pour.milk = $0 })) {
-            Text("Not logged").tag(BrewDetails.Milk?.none)
-            ForEach(BrewDetails.Milk.allCases) { Text($0.displayName).tag(BrewDetails.Milk?.some($0)) }
+          .card()
+
+          VStack(alignment: .leading, spacing: 14) {
+            Text("Beans").font(.display(.headline))
+            Menu {
+              Picker("Beans", selection: $pour.bean) {
+                Text("None").tag(Bean?.none)
+                ForEach(beans) { bean in
+                  Text(bean.roaster.map { "\(bean.name) · \($0)" } ?? bean.name).tag(Bean?.some(bean))
+                }
+              }
+            } label: {
+              HStack(spacing: 12) {
+                RoastBadge(level: pour.bean?.roastLevel)
+                VStack(alignment: .leading, spacing: 2) {
+                  Text(pour.bean?.name ?? "No beans logged").font(.body.weight(.semibold)).foregroundStyle(Color.espresso)
+                  if let roaster = pour.bean?.roaster { Text(roaster).font(.footnote).foregroundStyle(.secondary) }
+                }
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+              }
+              .contentShape(.rect)
+            }
+            .accessibilityLabel("Beans")
+            Button { addingBean = true } label: {
+              Label("Add new beans…", systemImage: "plus")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(Color.well.opacity(0.6), in: .capsule)
+            }
+            .buttonStyle(.press)
+            .foregroundStyle(Color.crema)
+            .accessibilityLabel("Add new beans…")
           }
+          .card()
+
+          VStack(alignment: .leading, spacing: 14) {
+            Text("Milk").font(.display(.headline))
+            FlowLayout {
+              ForEach(BrewDetails.Milk.allCases) { milk in
+                Chip(text: milk.displayName, selected: pour.milk == milk) {
+                  withAnimation(.settle) { pour.milk = pour.milk == milk ? nil : milk }
+                }
+              }
+            }
+            .sensoryFeedback(.selection, trigger: pour.milk)
+          }
+          .card()
         }
-        .listRowBackground(Color.card)
+        .padding(16)
       }
-      .scrollContentBackground(.hidden)
+      .scrollDismissesKeyboard(.interactively)
       .background(Color.milk)
       .navigationTitle("Your drink")
       .navigationBarTitleDisplayMode(.inline)
@@ -125,15 +172,10 @@ struct DrinkLogEditor: View {
     .tint(.crema)
   }
 
-  private func number(_ label: String, value: Binding<Double?>, unit: String) -> some View {
-    LabeledContent(label) {
-      HStack(spacing: 4) {
-        TextField("–", value: value, format: .number.precision(.fractionLength(0...1)))
-          .keyboardType(.decimalPad)
-          .multilineTextAlignment(.trailing)
-        Text(unit).foregroundStyle(.secondary)
-      }
-    }
+  /// Yield over dose, as baristas say it: "1:2.0".
+  private var ratio: String? {
+    guard let dose = pour.doseGrams, let yield = pour.yieldGrams, dose > 0 else { return nil }
+    return (yield / dose).formatted(.number.precision(.fractionLength(1)))
   }
 }
 

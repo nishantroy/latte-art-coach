@@ -16,10 +16,14 @@ struct HistoryView: View {
   var body: some View {
     List {
       Section {
-        Picker("Pattern", selection: $pattern) {
-          ForEach(Pattern.allCases) { Text($0.displayName).tag($0) }
+        SlidingPicker(options: Pattern.allCases, selection: $pattern) { option, _ in
+          HStack(spacing: 6) {
+            PatternGlyph(pattern: option).frame(width: 14, height: 14)
+            Text(option.displayName).font(.subheadline.weight(.semibold))
+          }
+          .accessibilityElement(children: .combine)
+          .accessibilityLabel(option.displayName)
         }
-        .pickerStyle(.segmented)
         .accessibilityIdentifier("history-pattern")
       }
       .listRowBackground(Color.clear)

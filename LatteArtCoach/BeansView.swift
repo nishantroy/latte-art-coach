@@ -168,12 +168,16 @@ struct BeanDetailView: View {
           }
         }
 
-        HStack(spacing: 10) {
-          stat("\(summary.pourCount)", "pours")
-          stat(summary.averageScore.map { "\(Int($0.rounded()))" } ?? "–", "art avg")
-          stat(summary.averageRating.map { String(format: "%.1f★", $0) } ?? "–", "taste avg")
-          stat(summary.usualBalance?.displayName ?? "–", "usually")
+        HStack(spacing: 0) {
+          stat("\(summary.pourCount)", "Pours")
+          Divider().frame(height: 36)
+          stat(summary.averageScore.map { "\(Int($0.rounded()))" } ?? "–", "Art")
+          Divider().frame(height: 36)
+          stat(summary.averageRating.map { String(format: "%.1f", $0) } ?? "–", "Taste ★")
+          Divider().frame(height: 36)
+          stat(summary.usualBalance?.displayName ?? "–", "Usually")
         }
+        .card()
 
         if pours.count >= 2 { chart.card() }
 
@@ -278,13 +282,10 @@ struct BeanDetailView: View {
   }
 
   private func stat(_ value: String, _ label: String) -> some View {
-    VStack(spacing: 2) {
-      Text(value).font(.number(20)).minimumScaleFactor(0.6).lineLimit(1)
-      Text(label).font(.caption).foregroundStyle(.secondary)
+    VStack(spacing: 4) {
+      Text(value).font(.readout(26)).minimumScaleFactor(0.5).lineLimit(1)
+      Text(label).eyebrow()
     }
     .frame(maxWidth: .infinity)
-    .padding(.vertical, 10)
-    .background(Color.card, in: .rect(cornerRadius: 12))
-    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.crema.opacity(0.15)))
   }
 }

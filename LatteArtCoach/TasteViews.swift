@@ -2,66 +2,76 @@ import LatteCore
 import SwiftData
 import SwiftUI
 
-/// How the drink tasted, as Form rows: balance, a 1–5 rating, and flavors
-/// noticed. Separate from the art score; it drives the dial-in advice and
-/// bean ratings.
+/// How the drink tasted: balance, a 1–5 rating, and flavors noticed.
+/// Separate from the art score; it drives the dial-in advice and bean ratings.
 struct TasteFields: View {
   @Bindable var pour: Pour
   @Environment(\.modelContext) private var context
   @State private var newNote = ""
 
   var body: some View {
-    Picker("Balance", selection: Binding(get: { pour.taste.balance }, set: { b in update { $0.balance = b } })) {
-      ForEach(DrinkTaste.Balance.allCases) { Text($0.displayName).tag(DrinkTaste.Balance?.some($0)) }
-    }
-    .pickerStyle(.segmented)
-    .accessibilityIdentifier("taste-balance")
-    HStack(spacing: 2) {
-      ForEach(1...5, id: \.self) { star in
-        Button {
-          withAnimation(.settle) { update { $0.rating = $0.rating == star ? nil : star } }
-        } label: {
-          Image(systemName: star <= (pour.drinkRating ?? 0) ? "star.fill" : "star")
-            .font(.title3)
-            .foregroundStyle(Color.measure)
-            .frame(width: 40, height: 40)
-            .contentShape(.rect)
+    VStack(alignment: .leading, spacing: 20) {
+      SlidingPicker(options: DrinkTaste.Balance.allCases,
+                    selection: Binding(get: { pour.taste.balance }, set: { b in update { $0.balance = b } }),
+                    allowsNone: true) { balance, _ in
+        Text(balance.displayName).font(.subheadline.weight(.semibold))
+      }
+      .accessibilityIdentifier("taste-balance")
+
+      HStack(spacing: 4) {
+        ForEach(1...5, id: \.self) { star in
+          let on = star <= (pour.drinkRating ?? 0)
+          Button {
+            withAnimation(.glide) { update { $0.rating = $0.rating == star ? nil : star } }
+          } label: {
+            Image(systemName: on ? "star.fill" : "star")
+              .font(.system(size: 26, weight: .medium))
+              .foregroundStyle(on ? Color.measure : Color.secondary.opacity(0.5))
+              .symbolEffect(.bounce, value: on)
+              .frame(width: 44, height: 44)
+              .contentShape(.rect)
+          }
+          .buttonStyle(PressStyle(scale: 0.85))
+          .accessibilityLabel("\(star) star\(star == 1 ? "" : "s")")
+          .accessibilityIdentifier("drink-\(star)")
         }
-        .buttonStyle(PressStyle(scale: 0.85))
-        .accessibilityLabel("\(star) star\(star == 1 ? "" : "s")")
-        .accessibilityIdentifier("drink-\(star)")
-      }
-      Spacer()
-      if let rating = pour.drinkRating {
-        Text(["", "Didn't like it", "Meh", "Fine", "Good", "Loved it"][rating])
+        Spacer()
+        Text(["", "Didn't like it", "Meh", "Fine", "Good", "Loved it"][pour.drinkRating ?? 0])
           .font(.subheadline)
+          .lineLimit(1)
           .foregroundStyle(.secondary)
+          .contentTransition(.opacity)
       }
-    }
-    .sensoryFeedback(.selection, trigger: pour.drinkRating)
-    VStack(alignment: .leading, spacing: 8) {
-      Text("Flavors you noticed").font(.subheadline).foregroundStyle(.secondary)
-      ScrollView(.horizontal) {
-        HStack(spacing: 8) {
+      .sensoryFeedback(.selection, trigger: pour.drinkRating)
+
+      VStack(alignment: .leading, spacing: 10) {
+        Text("Flavors you noticed").eyebrow()
+        FlowLayout {
           ForEach(noteChoices, id: \.self) { note in
-            chip(note, selected: pour.tastedNotes.contains(note)) {
-              withAnimation(.settle) { update { taste in
-                if let i = taste.notes.firstIndex(of: note) { taste.notes.remove(at: i) } else { taste.notes.append(note) }
-              } }
+            Chip(text: note, selected: pour.tastedNotes.contains(note)) {
+              withAnimation(.settle) {
+                update { taste in
+                  if let i = taste.notes.firstIndex(of: note) { taste.notes.remove(at: i) } else { taste.notes.append(note) }
+                }
+              }
             }
           }
         }
+        .sensoryFeedback(.selection, trigger: pour.tastedNotes)
+        TextField("Add a flavor", text: $newNote)
+          .font(.subheadline)
+          .submitLabel(.done)
+          .padding(.horizontal, 14)
+          .padding(.vertical, 10)
+          .background(Color.well.opacity(0.6), in: .capsule)
+          .onSubmit {
+            let note = newNote.trimmingCharacters(in: .whitespaces).lowercased()
+            newNote = ""
+            guard !note.isEmpty, !pour.tastedNotes.contains(note) else { return }
+            withAnimation(.settle) { update { $0.notes.append(note) } }
+          }
       }
-      .scrollIndicators(.hidden)
     }
-    TextField("Add a flavor", text: $newNote)
-      .submitLabel(.done)
-      .onSubmit {
-        let note = newNote.trimmingCharacters(in: .whitespaces).lowercased()
-        newNote = ""
-        guard !note.isEmpty, !pour.tastedNotes.contains(note) else { return }
-        update { $0.notes.append(note) }
-      }
   }
 
   /// The bag's notes first (to check against), then anything already picked.
@@ -77,18 +87,6 @@ struct TasteFields: View {
     change(&taste)
     pour.taste = taste
     try? context.save()
-  }
-
-  private func chip(_ text: String, selected: Bool, action: @escaping () -> Void) -> some View {
-    Button(action: action) {
-      Text(text)
-        .font(.subheadline.weight(selected ? .semibold : .regular))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .foregroundStyle(selected ? Color.white : Color.espresso)
-        .background(selected ? Color.crema : Color.crema.opacity(0.1), in: .capsule)
-    }
-    .buttonStyle(.press)
   }
 }
 
@@ -110,13 +108,18 @@ struct DialInCard: View {
             .foregroundStyle(Color.espresso)
         }
         ForEach(tips) { tip in
-          VStack(alignment: .leading, spacing: 4) {
-            Label(tip.title, systemImage: icon(tip.kind)).font(.subheadline.bold())
-            Text(tip.detail).font(.subheadline).foregroundStyle(.secondary)
+          HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon(tip.kind))
+              .font(.footnote.weight(.semibold))
+              .foregroundStyle(Color.crema)
+              .frame(width: 28, height: 28)
+              .background(Color.crema.opacity(0.12), in: .circle)
+            VStack(alignment: .leading, spacing: 3) {
+              Text(tip.title).font(.subheadline.weight(.semibold))
+              Text(tip.detail).font(.subheadline).foregroundStyle(.secondary)
+            }
           }
           .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(12)
-          .background(Color.measure.opacity(0.1), in: .rect(cornerRadius: 12))
         }
         let target = DialIn.target(for: pour.bean?.roastLevel)
         Text("Usual target for \(roastName): 1:\(f(target.ratio.lowerBound))–\(f(target.ratio.upperBound)) in \(Int(target.seconds.lowerBound))–\(Int(target.seconds.upperBound)) s. Taste wins over the numbers.")
