@@ -16,7 +16,7 @@ public enum LabelReader {
     // each holding only a slice of the big letters, and keep what's new.
     let spans = found.filter { $0.line.height > giant }.map { $0.top - $0.line.height ... $0.top }
     for span in forceBands && spans.isEmpty ? [0.0...1.0] : spans {
-      let size = min(0.25, span.upperBound - span.lowerBound), step = size * 0.6
+      let size = min(0.15, span.upperBound - span.lowerBound), step = size * 0.65
       var bottom = span.lowerBound
       while bottom < span.upperBound - size * 0.4 {
         let band = bottom ... min(1, bottom + size)
