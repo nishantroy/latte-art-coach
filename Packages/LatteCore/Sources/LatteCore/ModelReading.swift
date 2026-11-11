@@ -36,6 +36,11 @@ extension BeanLabelParser {
       label.roaster.map { $0.lowercased().contains(name.lowercased()) } == true ? nil : name
     }
     label.name = rules.name ?? name
+    // With no roaster printed, the model may offer the coffee's own name.
+    if rules.roaster == nil, let roaster = label.roaster, let name = label.name ?? rules.headline,
+       squash(name).contains(squash(roaster)) || squash(roaster).contains(squash(name)) {
+      label.roaster = nil
+    }
     label.origin = rules.origin ?? onBag(model.origin)
     label.process = rules.process ?? onBag(model.process).map(\.capitalizedFirst)
     label.variety = rules.variety ?? onBag(model.variety)

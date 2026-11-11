@@ -32,6 +32,16 @@ import Testing
     #expect(label.tastingNotes == ["dark sugars", "chocolate", "toffee", "nuttiness"])
   }
 
+  /// The phone missed "HUCKLEBERRY ROASTERS"; the model then named the
+  /// coffee as its own roaster.
+  @Test func aRoasterIsNotTheCoffeesName() {
+    let lines = Self.huckleberry.filter { $0.text != "HUCKLEBERRY ROASTERS" }
+    var model = ModelReading()
+    model.name = "Civitas Blend"; model.roaster = "Civitas"
+    let label = Self.merge(lines, model)
+    #expect(label.name == "Civitas Blend" && label.roaster == nil)
+  }
+
   @Test func fillsWhatTheRulesMissed() {
     let lines = ["ONYX", "Guji Hambela", "Ethiopia", "Washed", "74158", "elevation 2,100 m", "packed 11.01.26", "Peach tea, jasmine"]
       .map { LabelLine($0) }
