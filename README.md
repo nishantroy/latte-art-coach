@@ -14,7 +14,7 @@ xcodegen generate && open LatteArtCoach.xcodeproj
 
 Installing on a phone needs it paired with this Mac, with Developer Mode on. Signing uses the team in `project.yml`.
 
-TestFlight uploads use the Apple ID signed in to Xcode. The build number is the commit count, so commit before each upload. The app's App Store Connect record is "Lattelier" (bundle ID `com.nishantroy.latteartcoach`).
+TestFlight uploads use the Apple ID signed in to Xcode. The build number is the commit count, so commit before each upload. The app's App Store Connect record is "Lattelier: Espresso Coach" (bundle ID `com.nishantroy.latteartcoach`).
 
 - `LatteArtCoach/` is the SwiftUI app. Its Xcode project is generated from `project.yml`.
 - `Packages/LatteCore/` is the analysis package (cup detection, foam segmentation, measurement, scoring, rule-based tips, bag-label parsing, dial-in rules, taste preferences). It has no UI dependencies, and its tests run on the Mac with real and synthetic photos.
