@@ -51,6 +51,16 @@ import Testing
     #expect(BeanLabelParser.closest("Sey", among: ["Onyx"]) == nil)
   }
 
+  /// From a Motoring Coffee bag: the model listed the farm as a flavor.
+  @Test func aPlaceIsNotAFlavor() {
+    let lines = ["MOTORING", "COFFEE", "TIRE KICKER", "ORIGIN", "NOTES", "Milk Chocolate,", "Oaxaca, Mexico",
+                 "Caramel, Orange Peel", "Churupampa, Peru", "PROCESS: Washed"].map { LabelLine($0) }
+    var model = ModelReading()
+    model.origin = "Oaxaca, Mexico"
+    model.tastingNotes = ["Milk Chocolate", "Caramel", "Orange Peel", "Churupampa", "Oaxaca", "Washed"]
+    #expect(Self.merge(lines, model).tastingNotes == ["milk chocolate", "caramel", "orange peel"])
+  }
+
   @Test func fillsWhatTheRulesMissed() {
     let lines = ["ONYX", "Guji Hambela", "Ethiopia", "Washed", "74158", "elevation 2,100 m", "packed 11.01.26", "Peach tea, jasmine"]
       .map { LabelLine($0) }

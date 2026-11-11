@@ -56,10 +56,22 @@ extension BeanLabelParser {
 
     // Words from a date heading or the roast line aren't flavors, unless the
     // rules (which know a "Notes:" list) found them too.
+    // Nor are places: a word printed only on a line naming a country
+    // ("Churupampa, Peru"), or the answer to another field.
+    let placeLines = lines.map { squash($0.text) }.filter { line in
+      origins.contains { line.contains(squash($0)) } || (onBag(model.origin).map { line.contains(squash($0)) } ?? false)
+    }
+    let otherLines = lines.map { squash($0.text) }.filter { !placeLines.contains($0) }
+    let otherFields = [label.name, label.roaster, label.origin, label.process, label.variety, onBag(model.origin)]
+      .compactMap { $0.map(squash) }
     let notes = model.tastingNotes.compactMap { note -> String? in
       guard let t = onBag(note)?.lowercased(), t.split(separator: " ").count <= 3 else { return nil }
       let heading = ["date", "roast", "blend", "process", "origin", "notes"].contains { t.contains($0) }
-      return heading && !rules.tastingNotes.contains(t) ? nil : t
+      if heading && !rules.tastingNotes.contains(t) { return nil }
+      let s = squash(t)
+      if otherFields.contains(where: { $0.contains(s) }) && !rules.tastingNotes.contains(t) { return nil }
+      if !otherLines.contains(where: { $0.contains(s) }) && !rules.tastingNotes.contains(t) { return nil }
+      return t
     }
     var merged: [String] = []
     for note in notes + rules.tastingNotes where !merged.contains(where: { $0.contains(note) || note.contains($0) }) {
