@@ -29,7 +29,7 @@ struct DrinkLogCard: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .contentShape(.rect)
     }
-    .buttonStyle(.plain)
+    .buttonStyle(.pressCard)
     .accessibilityIdentifier("drink-card")
     .sheet(isPresented: $editing) { DrinkLogEditor(pour: pour) }
   }

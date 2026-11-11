@@ -186,7 +186,7 @@ struct BeanDetailView: View {
                 }
                 .padding(.vertical, 4)
               }
-              .buttonStyle(.plain)
+              .buttonStyle(.pressCard)
             }
           }
           .card()

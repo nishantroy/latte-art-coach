@@ -43,6 +43,31 @@ extension View {
   }
 }
 
+extension Animation {
+  /// The app's one motion curve for state changes: quick, no bounce.
+  static let settle = Animation.smooth(duration: 0.35)
+}
+
+/// Custom tappable surfaces (pattern cards, rating chips, cards that open a
+/// sheet): they give under the finger, like a system button.
+struct PressStyle: ButtonStyle {
+  var scale: CGFloat = 0.96
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .scaleEffect(configuration.isPressed && !reduceMotion ? scale : 1)
+      .opacity(configuration.isPressed ? 0.85 : 1)
+      .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+  }
+}
+
+extension ButtonStyle where Self == PressStyle {
+  static var press: PressStyle { PressStyle() }
+  /// For large cards, where 0.96 would move the edges too far.
+  static var pressCard: PressStyle { PressStyle(scale: 0.985) }
+}
+
 enum Theme {
   /// Serif navigation titles everywhere.
   @MainActor static func configure() {

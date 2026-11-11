@@ -187,6 +187,7 @@ struct CoachingSection: View {
         if let note { Text(note).font(.footnote).foregroundStyle(.secondary) }
       }
     }
+    .animation(.settle, value: phaseName)
     .task(id: taskKey) {
       let prompt = prompt()
       // Reuse saved coaching when it was written from exactly these facts.
@@ -196,6 +197,18 @@ struct CoachingSection: View {
         pour.coachingPrompt = prompt
         try? context.save()
       }
+    }
+  }
+
+  /// The phase without its payload: animates the switch from thinking to
+  /// writing, but not every streamed word.
+  private var phaseName: String {
+    switch coach.phase {
+    case .thinking: "thinking"
+    case .writing: "writing"
+    case .done: "done"
+    case .failed: "failed"
+    case .unavailable: "unavailable"
     }
   }
 
@@ -247,15 +260,23 @@ struct CoachingSection: View {
 
   private var askBox: some View {
     VStack(alignment: .leading, spacing: 8) {
-      HStack {
+      HStack(spacing: 8) {
         TextField("Ask your coach about this pour", text: $question)
-          .textFieldStyle(.roundedBorder)
+          .font(.subheadline)
           .submitLabel(.send)
           .onSubmit(send)
-        Button(action: send) { Image(systemName: "arrow.up.circle.fill").font(.title2) }
-          .disabled(question.trimmingCharacters(in: .whitespaces).isEmpty || coach.isAnswering)
-          .tint(.crema)
+        Button(action: send) {
+          Image(systemName: "arrow.up.circle.fill").font(.title2).symbolRenderingMode(.hierarchical)
+        }
+        .disabled(question.trimmingCharacters(in: .whitespaces).isEmpty || coach.isAnswering)
+        .tint(.crema)
+        .accessibilityLabel("Ask")
       }
+      .padding(.leading, 14)
+      .padding(.trailing, 6)
+      .padding(.vertical, 6)
+      .background(Color.milk, in: .capsule)
+      .overlay(Capsule().strokeBorder(Color.crema.opacity(0.2)))
       if let answer = coach.answer {
         Text(answer.isEmpty ? "…" : answer).font(.subheadline)
       }

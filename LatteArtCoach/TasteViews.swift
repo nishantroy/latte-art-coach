@@ -19,7 +19,7 @@ struct TasteFields: View {
     HStack(spacing: 2) {
       ForEach(1...5, id: \.self) { star in
         Button {
-          update { $0.rating = $0.rating == star ? nil : star }
+          withAnimation(.settle) { update { $0.rating = $0.rating == star ? nil : star } }
         } label: {
           Image(systemName: star <= (pour.drinkRating ?? 0) ? "star.fill" : "star")
             .font(.title3)
@@ -27,7 +27,7 @@ struct TasteFields: View {
             .frame(width: 40, height: 40)
             .contentShape(.rect)
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(PressStyle(scale: 0.85))
         .accessibilityLabel("\(star) star\(star == 1 ? "" : "s")")
         .accessibilityIdentifier("drink-\(star)")
       }
@@ -45,9 +45,9 @@ struct TasteFields: View {
         HStack(spacing: 8) {
           ForEach(noteChoices, id: \.self) { note in
             chip(note, selected: pour.tastedNotes.contains(note)) {
-              update { taste in
+              withAnimation(.settle) { update { taste in
                 if let i = taste.notes.firstIndex(of: note) { taste.notes.remove(at: i) } else { taste.notes.append(note) }
-              }
+              } }
             }
           }
         }
@@ -88,7 +88,7 @@ struct TasteFields: View {
         .foregroundStyle(selected ? Color.white : Color.espresso)
         .background(selected ? Color.crema : Color.crema.opacity(0.1), in: .capsule)
     }
-    .buttonStyle(.borderless)
+    .buttonStyle(.press)
   }
 }
 

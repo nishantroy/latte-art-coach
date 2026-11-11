@@ -185,7 +185,7 @@ struct ScoreFlowView: View {
     Group {
       switch model.state {
       case .rating(let photo, let analysis, let pour):
-        RateFirstView(photo: photo, analysis: analysis, pour: pour, onReveal: { model.reveal() })
+        RateFirstView(photo: photo, analysis: analysis, pour: pour, onReveal: { withAnimation(.settle) { model.reveal() } })
       case .result(let photo, let analysis, let pour):
         ResultView(
           photo: photo, analysis: analysis, pour: pour,

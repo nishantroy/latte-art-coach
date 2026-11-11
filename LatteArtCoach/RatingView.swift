@@ -9,15 +9,15 @@ struct RatingRow: View {
     HStack(spacing: 4) {
       ForEach(1...10, id: \.self) { value in
         Button {
-          rating = rating == value ? nil : value
+          withAnimation(.settle) { rating = rating == value ? nil : value }
         } label: {
           Text("\(value)")
             .font(.number(17))
-            .frame(maxWidth: .infinity, minHeight: 40)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .background(value == rating ? Color.crema : Color.crema.opacity(0.12), in: .rect(cornerRadius: 10))
             .foregroundStyle(value == rating ? Color.white : Color.espresso)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
         .accessibilityIdentifier("rating-\(value)")
         .accessibilityAddTraits(value == rating ? .isSelected : [])
       }

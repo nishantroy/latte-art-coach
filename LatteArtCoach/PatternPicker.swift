@@ -10,7 +10,7 @@ struct PatternPicker: View {
       ForEach(Pattern.allCases) { pattern in
         let selected = pattern == selection
         Button {
-          selection = pattern
+          withAnimation(.settle) { selection = pattern }
         } label: {
           VStack(spacing: 6) {
             PatternGlyph(pattern: pattern).frame(width: 34, height: 34)
@@ -22,7 +22,7 @@ struct PatternPicker: View {
           .background(selected ? Color.crema : Color.card, in: .rect(cornerRadius: 14))
           .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.crema.opacity(selected ? 0 : 0.25)))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
         .accessibilityLabel(pattern.displayName)
         .accessibilityAddTraits(selected ? .isSelected : [])
       }
