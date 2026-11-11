@@ -221,19 +221,29 @@ struct NewBeanForm: View {
               ProgressView()
               Text("Reading the bag…").foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, minHeight: 96)
+            .background(Color.card, in: .rect(cornerRadius: 20, style: .continuous))
           } else {
-            if CameraPicker.isAvailable {
-              Button { showingCamera = true } label: { Label("Scan the bag", systemImage: "camera.viewfinder") }
-                .accessibilityIdentifier("scan-bag")
+            HStack(spacing: 12) {
+              if CameraPicker.isAvailable {
+                Button { showingCamera = true } label: { ScanTile(title: "Scan the bag", symbol: "camera.viewfinder", prominent: true) }
+                  .buttonStyle(.press)
+                  .accessibilityIdentifier("scan-bag")
+              }
+              PhotosPicker(selection: $pickerItem, matching: .images) {
+                ScanTile(title: CameraPicker.isAvailable ? "From photos" : "Choose a photo of the bag",
+                         symbol: "photo.on.rectangle", prominent: !CameraPicker.isAvailable)
+              }
+              .buttonStyle(.press)
             }
-            PhotosPicker(selection: $pickerItem, matching: .images) {
-              Label("Choose a photo of the bag", systemImage: "photo.on.rectangle")
-            }
+            .padding(.bottom, 8)
           }
         } footer: {
           Text(scanNote ?? "Photograph the label and the details fill in. Read on this iPhone; nothing is uploaded.")
         }
-        .listRowBackground(Color.card)
+        // The tiles are the surface; no row behind them.
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets())
         Section("Coffee") {
           TextField("Name, e.g. Guji Hambela", text: $name)
           TextField("Roaster", text: $roaster)
@@ -244,10 +254,15 @@ struct NewBeanForm: View {
           if knowsRoastDate {
             DatePicker("Roasted", selection: $roastDate, in: ...Date.now, displayedComponents: .date)
           }
-          Picker("Roast level", selection: Binding(get: { roastLevel }, set: { roastLevel = $0; roastLevelIsGuess = false })) {
-            Text("Not sure").tag(BeanLabel.RoastLevel?.none)
-            ForEach(BeanLabel.RoastLevel.allCases) { Text($0.displayName).tag(BeanLabel.RoastLevel?.some($0)) }
+          VStack(alignment: .leading, spacing: 10) {
+            Text("Roast level").eyebrow()
+            SlidingPicker(options: BeanLabel.RoastLevel.allCases,
+                          selection: Binding(get: { roastLevel }, set: { roastLevel = $0; roastLevelIsGuess = false }),
+                          allowsNone: true) { level, _ in
+              Text(level == .mediumDark ? "Med-dark" : level.displayName).font(.footnote.weight(.semibold))
+            }
           }
+          .padding(.vertical, 4)
         } header: {
           Text("Roast")
         } footer: {
@@ -372,5 +387,23 @@ struct NewBeanForm: View {
     bean.labelText = labelText
     onSave(bean)
     dismiss()
+  }
+}
+
+/// A large tile to start a bag scan: the camera in crema, the library plain.
+private struct ScanTile: View {
+  let title: String
+  let symbol: String
+  let prominent: Bool
+
+  var body: some View {
+    VStack(spacing: 8) {
+      Image(systemName: symbol).font(.title2.weight(.medium))
+      Text(title).font(.subheadline.weight(.semibold)).multilineTextAlignment(.center)
+    }
+    .foregroundStyle(prominent ? Color.white : Color.crema)
+    .frame(maxWidth: .infinity, minHeight: 96)
+    .background(prominent ? Color.crema : Color.well.opacity(0.6), in: .rect(cornerRadius: 20, style: .continuous))
+    .contentShape(.rect)
   }
 }
