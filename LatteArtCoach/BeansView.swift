@@ -277,6 +277,7 @@ struct BeanDetailView: View {
       .chartYAxis { AxisMarks(values: [0, 50, 100]) { AxisGridLine(); AxisValueLabel() } }
       .chartLegend(position: .top, alignment: .leading)
       .chartXScale(range: .plotDimension(padding: 10))
+      .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { AxisValueLabel(format: .dateTime.month(.abbreviated).day()) } }
       .frame(height: 160)
     }
   }

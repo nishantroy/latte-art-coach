@@ -103,9 +103,16 @@ private struct ProgressSection: View {
   let summary: ProgressSummary
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: 16) {
+      HStack(spacing: 0) {
+        stat("\(Int(summary.recentAverageScore.rounded()))", "Average")
+        Divider().frame(height: 36)
+        stat("\(summary.pourCount)", "Pours")
+        Divider().frame(height: 36)
+        stat("\(pours.map(\.score).max() ?? 0)", "Best")
+      }
       if pours.count >= 2 { chart }
-      Text(headline).font(.display(.headline))
+      Text(headline).font(.subheadline).foregroundStyle(.secondary)
       VStack(spacing: 10) {
         ForEach(summary.trends, id: \.component) { trend in
           HStack(spacing: 10) {
@@ -161,7 +168,16 @@ private struct ProgressSection: View {
       .chartYAxis { AxisMarks(values: [0, 50, 100]) { AxisGridLine(); AxisValueLabel() } }
       .chartLegend(position: .top, alignment: .leading)
       .chartXScale(range: .plotDimension(padding: 10))
+      .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { AxisValueLabel(format: .dateTime.month(.abbreviated).day()) } }
       .frame(height: 170)
+  }
+
+  private func stat(_ value: String, _ label: String) -> some View {
+    VStack(spacing: 4) {
+      Text(value).font(.readout(30))
+      Text(label).eyebrow()
+    }
+    .frame(maxWidth: .infinity)
   }
 
   private var headline: String {

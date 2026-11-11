@@ -171,21 +171,23 @@ struct LiveCameraView: View {
     VStack {
       HStack {
         Button { onFinish(nil) } label: {
-          Image(systemName: "xmark").font(.title3.bold()).frame(width: 44, height: 44)
-            .background(.ultraThinMaterial, in: .circle)
+          Image(systemName: "xmark").font(.title3.weight(.semibold)).frame(width: 44, height: 44)
+            .glassEffect(.regular.interactive(), in: .circle)
         }
         .accessibilityLabel("Close")
         Spacer()
-        Text(pattern.displayName).font(.subheadline.weight(.semibold)).padding(.horizontal, 12).padding(.vertical, 8)
-          .background(.ultraThinMaterial, in: .capsule)
+        Label { Text(pattern.displayName) } icon: { PatternGlyph(pattern: pattern).frame(width: 14, height: 14) }
+          .font(.subheadline.weight(.semibold)).padding(.horizontal, 14).padding(.vertical, 10)
+          .glassEffect(.regular, in: .capsule)
       }
       .padding(.horizontal)
       Spacer()
       Text(frame?.framing.hint ?? "Point the camera down at the cup")
-        .font(.headline)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: .capsule)
+        .font(.subheadline.weight(.semibold))
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .glassEffect(ready ? .regular.tint(Color.measure.opacity(0.5)) : .regular, in: .capsule)
+        .contentTransition(.opacity)
         .animation(.easeInOut(duration: 0.2), value: frame?.framing)
         .accessibilityIdentifier("framing-hint")
       Button {
