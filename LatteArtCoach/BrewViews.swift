@@ -203,7 +203,7 @@ struct NewBeanForm: View {
           Text("Roast")
         } footer: {
           Text(roastLevelIsGuess
-            ? "Roast level guessed from the tasting notes; change it if the bag says otherwise."
+            ? "Roast level guessed from the bag; change it if you know otherwise."
             : "Freshness changes the crema, and the crema changes how your art turns out.")
         }
         Section("From the bag") {

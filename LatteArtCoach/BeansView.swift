@@ -134,7 +134,7 @@ struct BeanDetailView: View {
             Text("On the bag: " + bean.tastingNotes.joined(separator: ", ")).font(.subheadline)
           }
           if bean.roastLevelIsGuess, bean.roastLevel != nil {
-            Text("Roast level guessed from the tasting notes.").font(.caption).foregroundStyle(.secondary)
+            Text("Roast level guessed from the bag.").font(.caption).foregroundStyle(.secondary)
           }
         }
 
