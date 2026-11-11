@@ -234,8 +234,8 @@ struct CoachingSection: View {
         .overlay(alignment: .leading) { Capsule().fill(Color.measure).frame(width: 3) }
         .accessibilityIdentifier("coach-focus")
     }
-    ForEach(Array(coaching.tips.enumerated()), id: \.offset) { _, tip in
-      card(title: tip.title, detail: tip.detail)
+    ForEach(Array(coaching.tips.enumerated()), id: \.offset) { index, tip in
+      card(index + 1, title: tip.title, detail: tip.detail)
     }
     if !coaching.progress.isEmpty {
       let progress = coaching.progress
@@ -245,17 +245,27 @@ struct CoachingSection: View {
   }
 
   private var ruleTips: some View {
-    ForEach(analysis.tips) { tip in card(title: tip.title, detail: tip.detail) }
+    ForEach(Array(analysis.tips.enumerated()), id: \.offset) { index, tip in
+      card(index + 1, title: tip.title, detail: tip.detail)
+    }
   }
 
-  private func card(title: String, detail: String) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(title).font(.subheadline.bold())
-      Text(detail).font(.subheadline).foregroundStyle(.secondary)
+  /// One tip: a numbered step, no box.
+  private func card(_ number: Int, title: String, detail: String) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 12) {
+      Text("\(number)")
+        .font(.caption.weight(.bold).monospacedDigit())
+        .foregroundStyle(Color.crema)
+        .frame(width: 22, height: 22)
+        .background(Color.crema.opacity(0.12), in: .circle)
+        .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
+      VStack(alignment: .leading, spacing: 3) {
+        Text(title).font(.subheadline.weight(.semibold))
+        Text(detail).font(.subheadline).foregroundStyle(.secondary)
+      }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(12)
-    .background(Color.crema.opacity(0.08), in: .rect(cornerRadius: 12))
+    .padding(.vertical, 2)
   }
 
   private var askBox: some View {

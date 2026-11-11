@@ -275,6 +275,8 @@ struct ScoreFlowView: View {
     }
     .navigationTitle(title)
     .navigationBarTitleDisplayMode(.inline)
+    // Scoring is one focused flow; the tabs come back with "Pour another".
+    .toolbar(.hidden, for: .tabBar)
   }
 
   private var title: String {

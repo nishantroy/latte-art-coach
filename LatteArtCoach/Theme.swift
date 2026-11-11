@@ -149,9 +149,23 @@ struct SlidingPicker<Value: Hashable, Label: View>: View {
   @Binding var selection: Value?
   /// Tapping the chosen option again clears it.
   var allowsNone = false
+  /// A crema thumb with white text, for a value the user gives (a rating),
+  /// rather than a white thumb for a mode.
+  var accent = false
+  var identifier: ((Value) -> String)?
   @ViewBuilder let label: (Value, Bool) -> Label
   @Namespace private var thumb
   @State private var width: CGFloat = 0
+
+  init(options: [Value], selection: Binding<Value?>, allowsNone: Bool = false, accent: Bool = false,
+       identifier: ((Value) -> String)? = nil, @ViewBuilder label: @escaping (Value, Bool) -> Label) {
+    self.options = options
+    self._selection = selection
+    self.allowsNone = allowsNone
+    self.accent = accent
+    self.identifier = identifier
+    self.label = label
+  }
 
   var body: some View {
     HStack(spacing: 0) {
@@ -163,11 +177,11 @@ struct SlidingPicker<Value: Hashable, Label: View>: View {
           label(option, on)
             .frame(maxWidth: .infinity, minHeight: 36)
             .padding(.vertical, 4)
-            .foregroundStyle(on ? Color.espresso : Color.secondary)
+            .foregroundStyle(on ? (accent ? Color.white : Color.espresso) : Color.secondary)
             .background {
               if on {
                 Capsule()
-                  .fill(Color.thumb)
+                  .fill(accent ? Color.crema : Color.thumb)
                   .shadow(color: .black.opacity(0.10), radius: 6, y: 2)
                   .matchedGeometryEffect(id: "thumb", in: thumb)
               }
@@ -176,6 +190,7 @@ struct SlidingPicker<Value: Hashable, Label: View>: View {
         }
         .buttonStyle(.press)
         .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityIdentifier(identifier?(option) ?? "")
       }
     }
     .padding(3)
@@ -194,9 +209,9 @@ struct SlidingPicker<Value: Hashable, Label: View>: View {
 
 extension SlidingPicker {
   /// For a choice that always has a value.
-  init(options: [Value], selection: Binding<Value>, @ViewBuilder label: @escaping (Value, Bool) -> Label) {
-    self.options = options
-    self._selection = Binding(get: { selection.wrappedValue }, set: { if let v = $0 { selection.wrappedValue = v } })
-    self.label = label
+  init(options: [Value], selection: Binding<Value>, identifier: ((Value) -> String)? = nil,
+       @ViewBuilder label: @escaping (Value, Bool) -> Label) {
+    self.init(options: options, selection: Binding<Value?>(get: { selection.wrappedValue }, set: { if let v = $0 { selection.wrappedValue = v } }),
+              identifier: identifier, label: label)
   }
 }

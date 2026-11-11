@@ -21,8 +21,19 @@ struct ResultView: View {
       VStack(alignment: .leading, spacing: 16) {
         PourPhotoView(photo: photo, analysis: analysis, showOverlay: showOverlay)
           .onTapGesture { withAnimation(.settle) { showOverlay.toggle() } }
+          .overlay(alignment: .bottomTrailing) {
+            Image(systemName: showOverlay ? "eye.fill" : "eye.slash.fill")
+              .font(.footnote.weight(.semibold))
+              .foregroundStyle(.white)
+              .frame(width: 34, height: 34)
+              .glassEffect(.regular.tint(.black.opacity(0.35)), in: .circle)
+              .padding(12)
+              .allowsHitTesting(false)
+          }
+          .sensoryFeedback(.selection, trigger: showOverlay)
           .accessibilityLabel("Photo of your pour, tap to toggle the overlay")
         scoreHeader
+          .padding(.vertical, 8)
         if let looks = resemblance {
           Button { onRescore(looks) } label: {
             Label("This reads more like a \(looks.noun). Score it as one", systemImage: "arrow.triangle.2.circlepath")
@@ -42,10 +53,10 @@ struct ResultView: View {
         details.card()
         if let onAgain {
           Button(action: onAgain) {
-            Label("Pour another", systemImage: "camera").frame(maxWidth: .infinity)
+            Label("Pour another", systemImage: "camera")
           }
-          .buttonStyle(.borderedProminent)
-          .controlSize(.large)
+          .buttonStyle(.primary)
+          .padding(.top, 8)
           .accessibilityIdentifier("pour-another")
         }
       }
@@ -57,35 +68,34 @@ struct ResultView: View {
     }
     .sheet(isPresented: $editingRating) {
       if let pour {
-        VStack(alignment: .leading, spacing: 14) {
-          Text("Your rating").font(.display(.title3))
+        VStack(spacing: 16) {
+          RatingReadout(rating: pour.rating)
           RatingRow(rating: Binding(get: { pour.rating }, set: { pour.rating = $0; try? pour.modelContext?.save() }))
         }
         .padding(20)
-        .presentationDetents([.height(170)])
-        .presentationBackground(Color.milk)
+        .presentationDetents([.height(250)])
       }
     }
   }
 
   private var scoreHeader: some View {
-    HStack(spacing: 16) {
-      ScoreGauge(score: analysis.score.overall).frame(width: 124, height: 124)
-      VStack(alignment: .leading, spacing: 8) {
-        Text(verdict).font(.display(.title2))
-        if let pour {
-          Button { editingRating = true } label: {
-            Label(pour.rating.map { "You rated it \($0)/10" } ?? "Add your rating", systemImage: "pencil")
-              .font(.subheadline)
-          }
-          .tint(.crema)
-          .accessibilityIdentifier("your-rating")
+    VStack(spacing: 10) {
+      ScoreGauge(score: analysis.score.overall).frame(width: 200, height: 200)
+      Text(verdict).font(.display(.title2))
+      if let pour {
+        Button { editingRating = true } label: {
+          Label(pour.rating.map { "You rated it \($0)/10" } ?? "Add your rating", systemImage: "pencil")
+            .font(.subheadline.weight(.medium))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
         }
-        Text(showOverlay ? "Tap the photo to hide what was measured" : "Tap the photo to show what was measured")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+        .buttonStyle(.press)
+        .foregroundStyle(Color.crema)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .accessibilityIdentifier("your-rating")
       }
     }
+    .frame(maxWidth: .infinity)
   }
 
   private var verdict: String {
@@ -119,15 +129,14 @@ struct ResultView: View {
           }
         }
         Divider()
-        LabeledContent("Scored as") {
-          Picker("Scored as", selection: Binding(get: { analysis.pattern }, set: { if $0 != analysis.pattern { onRescore($0) } })) {
-            ForEach(Pattern.allCases) { Text($0.displayName).tag($0) }
+        VStack(alignment: .leading, spacing: 8) {
+          Text("Scored as").eyebrow()
+          SlidingPicker(options: Pattern.allCases,
+                        selection: Binding(get: { analysis.pattern }, set: { if $0 != analysis.pattern { onRescore($0) } })) { option, _ in
+            Text(option.displayName).font(.subheadline.weight(.semibold))
           }
-          .pickerStyle(.segmented)
-          .frame(maxWidth: 230)
           .accessibilityIdentifier("scored-as")
         }
-        .font(.subheadline)
         Button { adjustingCup = true } label: {
           Label("Cup outline wrong? Adjust it", systemImage: "circle.dashed").font(.subheadline)
         }
@@ -140,7 +149,7 @@ struct ResultView: View {
       }
       .padding(.top, 10)
     } label: {
-      Text("Score details").font(.display(.title3)).foregroundStyle(Color.espresso)
+      Text("Score details").font(.display(.headline)).foregroundStyle(Color.espresso)
     }
     .tint(.crema)
     .accessibilityIdentifier("score-details")
