@@ -64,6 +64,39 @@ import Testing
     #expect(label.tastingNotes.isEmpty)
   }
 
+  /// Text recognition's lines from a Huckleberry Roasters bag: the name is
+  /// split over two lines with a "Trade" badge between them, and a sentence
+  /// below mentions the blend again.
+  @Test func readsANameAndRoasterPrintedPlainly() {
+    let lines = [
+      ("A BAG OF TASTY COFFEE", 0.021), ("FROM YOUR FRIENDS AT", 0.016), ("HUCKLEBERRY ROASTERS", 0.015),
+      ("DENVER, COLORADO", 0.016), ("Civitas", 0.016), ("Trade", 0.009), ("Blend", 0.015),
+      ("dark sugars • chocolate • toffee", 0.013), ("Our Civitas blend is meant for the fan", 0.014),
+      ("roasting team, we hope you enjoy our", 0.016), ("ROAST/BLEND DATE", 0.014), ("10/30/26", 0.007),
+    ].map { LabelLine($0.0, height: $0.1) }
+    let label = BeanLabelParser.parse(lines, today: Self.today, calendar: Self.utc)
+    #expect(label.name == "Civitas Blend")
+    #expect(label.roaster == "Huckleberry Roasters")
+    #expect(label.roastDate == Self.day(2026, 10, 30))
+    #expect(label.tastingNotes == ["chocolate", "toffee"])
+  }
+
+  @Test func leavesNameAndRoasterToTheModelWhenUnclear() {
+    let label = Self.parse(["ONYX", "Ethiopia Guji Hambela", "Roasted on 2026-10-28", "Freshly roasted by our roasting team"])
+    #expect(label.name == nil && label.roaster == nil)
+  }
+
+  /// The bag photo itself: the roast date is printed far smaller than the
+  /// rest of the label.
+  @Test func readsTheSmallRoastDateOffABagPhoto() async throws {
+    let url = try #require(Bundle.module.url(forResource: "huckleberry-civitas", withExtension: "jpg", subdirectory: "Fixtures/labels"))
+    let lines = try await LabelReader.read(imageData: Data(contentsOf: url))
+    let label = BeanLabelParser.parse(lines, today: Self.today, calendar: Self.utc)
+    #expect(label.roastDate == Self.day(2026, 10, 30), "\(lines.map(\.text))")
+    #expect(label.name == "Civitas Blend")
+    #expect(label.roaster == "Huckleberry Roasters")
+  }
+
   /// End to end with Apple's text recognition: draws a label, reads it back.
   @Test func readsARenderedLabel() async throws {
     let image = try #require(Self.render([

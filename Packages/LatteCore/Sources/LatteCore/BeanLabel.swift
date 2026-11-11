@@ -1,8 +1,10 @@
 import Foundation
 
 /// What a coffee bag's label says, as far as fixed rules can tell from the
-/// recognized text. Name and roaster are left to the language model (or the
-/// user): a label's biggest words could be either. Anything not found is nil.
+/// recognized text. Name and roaster are only filled in when the label says
+/// so plainly ("Huckleberry Roasters", "Civitas Blend"); otherwise they're
+/// left to the language model (or the user), since a label's biggest words
+/// could be either. Anything not found is nil.
 public struct BeanLabel: Sendable, Equatable {
   public enum RoastLevel: String, CaseIterable, Sendable, Codable, Identifiable {
     case light, medium, mediumDark, dark
@@ -30,6 +32,10 @@ public struct BeanLabel: Sendable, Equatable {
   public var tastingNotes: [String] = []
   /// The largest line of text, a starting point for the name.
   public var headline: String?
+  /// A name the label spells out as one, such as "Civitas Blend".
+  public var name: String?
+  /// A line naming the roaster, such as "Huckleberry Roasters".
+  public var roaster: String?
 
   public init() {}
 }
@@ -54,6 +60,8 @@ public enum BeanLabelParser {
 
     label.headline = lines.filter { $0.text.count >= 3 && !$0.text.contains(where: \.isNumber) }
       .max { $0.height < $1.height }?.text
+    label.name = blendName(in: lines)
+    label.roaster = roaster(in: texts)
     label.roastDate = roastDate(in: texts, today: today, calendar: calendar)
     label.origin = origins.first { lower.contains($0.lowercased()) }
     label.process = processes.first { lower.contains($0.match) }?.name
@@ -68,6 +76,40 @@ public enum BeanLabelParser {
       label.roastLevelIsGuess = true
     }
     return label
+  }
+
+  // MARK: Name and roaster
+
+  /// "Civitas Blend", printed on one line or, as text recognition often
+  /// returns it, as "Civitas" and "Blend" on lines of the same size with a
+  /// smaller badge between them. Sentences that mention a blend don't count.
+  static func blendName(in lines: [LabelLine]) -> String? {
+    func words(_ s: String) -> [Substring] { s.split(separator: " ") }
+    func isTitle(_ s: String) -> Bool { (1...4).contains(words(s).count) && !s.contains(where: \.isNumber) }
+    for (i, line) in lines.enumerated() {
+      let text = line.text.trimmingCharacters(in: .whitespaces)
+      guard let last = words(text).last, last.lowercased() == "blend", isTitle(text) else { continue }
+      if words(text).count > 1 { return text }
+      // "Blend" alone: join the nearest line above printed at a similar size.
+      for prior in lines[max(0, i - 2)..<i].reversed() {
+        let similar = line.height == 0 || abs(prior.height - line.height) <= 0.3 * line.height
+        if similar, isTitle(prior.text), words(prior.text).count <= 2 { return prior.text + " " + text }
+      }
+    }
+    return nil
+  }
+
+  /// The first line naming a roaster ("Huckleberry Roasters", "Onyx Coffee
+  /// Roastery"), not a sentence that mentions roasting.
+  static func roaster(in texts: [String]) -> String? {
+    let pattern = /\b(roasters?|roastery|roasting co\.?|roasting company|coffee co\.?|coffee company)$/.ignoresCase()
+    let line = texts.first { text in
+      let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+      return (2...5).contains(t.split(separator: " ").count) && t.firstMatch(of: pattern) != nil
+    }?.trimmingCharacters(in: .whitespacesAndNewlines)
+    // Labels set the roaster in capitals; "HUCKLEBERRY ROASTERS" reads
+    // better as "Huckleberry Roasters".
+    return line.map { $0 == $0.uppercased() ? $0.capitalized : $0 }
   }
 
   // MARK: Roast date

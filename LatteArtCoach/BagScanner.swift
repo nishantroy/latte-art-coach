@@ -13,7 +13,8 @@ struct BagNames {
 }
 
 /// Reads a bag photo: text recognition, then fixed rules for the details,
-/// then the model for name and roaster when it's available.
+/// then the model for name and roaster when it's available. A name or
+/// roaster the label spells out plainly wins over the model's guess.
 enum BagScanner {
   struct Result {
     var name: String?
@@ -26,11 +27,15 @@ enum BagScanner {
     let lines = try await LabelReader.read(imageData: imageData)
     let label = BeanLabelParser.parse(lines)
     let text = lines.map(\.text).joined(separator: "\n")
-    var result = Result(name: label.headline, roaster: nil, label: label, text: text)
-    if case .available = SystemLanguageModel.default.availability, !lines.isEmpty,
-       let names = try? await names(from: lines) {
-      result.name = names.name ?? result.name
-      result.roaster = names.roaster
+    var result = Result(name: label.name ?? label.headline, roaster: label.roaster, label: label, text: text)
+    if label.name == nil || label.roaster == nil, case .available = SystemLanguageModel.default.availability,
+       !lines.isEmpty, let names = try? await names(from: lines) {
+      let roaster = label.roaster ?? names.roaster
+      // A big brand mark ("HUCK" for Huckleberry Roasters) is the roaster,
+      // not the coffee's name.
+      let brand = names.name.map { name in roaster?.lowercased().contains(name.lowercased()) == true } ?? false
+      result.name = label.name ?? (brand ? nil : names.name) ?? result.name
+      result.roaster = roaster
     }
     return result
   }

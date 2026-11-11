@@ -8,6 +8,7 @@ public enum LabelReader {
     var request = RecognizeTextRequest()
     request.recognitionLevel = .accurate
     request.usesLanguageCorrection = true
+    request.minimumTextHeightFraction = 0.005
     let observations = try await request.perform(on: image)
     // Top to bottom, as printed (Vision's y axis points up).
     return observations
