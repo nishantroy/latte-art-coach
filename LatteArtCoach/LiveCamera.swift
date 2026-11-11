@@ -215,8 +215,7 @@ struct LiveCameraView: View {
     let dx = (size.width - w * scale) / 2, dy = (size.height - h * scale) / 2
     return ZStack(alignment: .topLeading) {
       if let foam = frame.foam {
-        Image(decorative: foam, scale: 1)
-          .resizable()
+        FoamTint(mask: foam)
           .frame(width: w * scale, height: h * scale)
           .offset(x: dx, y: dy)
       }

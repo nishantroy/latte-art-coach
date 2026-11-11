@@ -20,7 +20,7 @@ struct ResultView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         PourPhotoView(photo: photo, analysis: analysis, showOverlay: showOverlay)
-          .onTapGesture { showOverlay.toggle() }
+          .onTapGesture { withAnimation(.settle) { showOverlay.toggle() } }
           .accessibilityLabel("Photo of your pour, tap to toggle the overlay")
         scoreHeader
         if let looks = resemblance {
@@ -29,7 +29,7 @@ struct ResultView: View {
               .font(.subheadline)
               .frame(maxWidth: .infinity, alignment: .leading)
           }
-          .buttonStyle(.plain)
+          .buttonStyle(.pressCard)
           .foregroundStyle(Color.crema)
           .card()
           .accessibilityIdentifier("resemblance-note")
@@ -106,7 +106,7 @@ struct ResultView: View {
 
   /// The breakdown and the rarely used controls, folded away.
   private var details: some View {
-    DisclosureGroup(isExpanded: $showingDetails) {
+    DisclosureGroup(isExpanded: $showingDetails.animation(.settle)) {
       VStack(alignment: .leading, spacing: 14) {
         VStack(alignment: .leading, spacing: 8) {
           ForEach(PourScore.Component.allCases, id: \.self) { component in
@@ -165,6 +165,15 @@ extension PourScore.Component {
   }
 }
 
+/// The foam the analysis found, in the app's amber "measured" color (the
+/// mask's own color is only a placeholder).
+struct FoamTint: View {
+  let mask: CGImage
+  var body: some View {
+    Color.measure.mask { Image(decorative: mask, scale: 1).resizable() }
+  }
+}
+
 /// The photo cropped around the cup, with the foam mask, cup outline and
 /// pattern axis drawn over it.
 struct PourPhotoView: View {
@@ -177,11 +186,12 @@ struct PourPhotoView: View {
     GeometryReader { proxy in
       let scale = proxy.size.width / crop.width
       ZStack(alignment: .topLeading) {
-        imageLayer(Image(uiImage: photo), crop: crop, scale: scale)
+        imageLayer(Image(uiImage: photo).resizable(), crop: crop, scale: scale)
+        if showOverlay, let overlay = analysis.foamOverlay.makeCGImage() {
+          imageLayer(FoamTint(mask: overlay).opacity(0.85), crop: crop, scale: scale)
+            .transition(.opacity)
+        }
         if showOverlay {
-          if let overlay = analysis.foamOverlay.makeCGImage() {
-            imageLayer(Image(decorative: overlay, scale: 1), crop: crop, scale: scale)
-          }
           Canvas { context, _ in
             func p(_ x: Double, _ y: Double) -> CGPoint { CGPoint(x: (x - crop.minX) * scale, y: (y - crop.minY) * scale) }
             let e = analysis.cup
@@ -195,10 +205,14 @@ struct PourPhotoView: View {
             var axis = Path()
             axis.move(to: p(analysis.stem.x, analysis.stem.y))
             axis.addLine(to: p(analysis.tip.x, analysis.tip.y))
-            context.stroke(axis, with: .color(.measure), lineWidth: 2.5)
+            // White on a dark edge: it reads over the amber foam and the crema alike.
+            context.stroke(axis, with: .color(.black.opacity(0.3)), style: StrokeStyle(lineWidth: 4.5, lineCap: .round))
+            context.stroke(axis, with: .color(.white), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
             let tip = p(analysis.tip.x, analysis.tip.y)
-            context.fill(Path(ellipseIn: CGRect(x: tip.x - 4, y: tip.y - 4, width: 8, height: 8)), with: .color(.measure))
+            context.fill(Path(ellipseIn: CGRect(x: tip.x - 5.5, y: tip.y - 5.5, width: 11, height: 11)), with: .color(.black.opacity(0.3)))
+            context.fill(Path(ellipseIn: CGRect(x: tip.x - 4, y: tip.y - 4, width: 8, height: 8)), with: .color(.white))
           }
+          .transition(.opacity)
         }
       }
       // The layers are larger than the view; pin them to the top-left so the
@@ -220,9 +234,8 @@ struct PourPhotoView: View {
   }
 
   /// Draws an image that spans the analysis frame, shifted so `crop` fills the view.
-  private func imageLayer(_ image: Image, crop: CGRect, scale: Double) -> some View {
+  private func imageLayer(_ image: some View, crop: CGRect, scale: Double) -> some View {
     image
-      .resizable()
       .frame(width: Double(analysis.imageWidth) * scale, height: Double(analysis.imageHeight) * scale)
       .offset(x: -crop.minX * scale, y: -crop.minY * scale)
   }
