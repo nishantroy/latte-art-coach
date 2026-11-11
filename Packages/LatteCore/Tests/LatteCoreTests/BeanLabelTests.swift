@@ -158,3 +158,24 @@ import Testing
     return ctx.makeImage()
   }
 }
+
+@Suite struct LabelBandTests {
+  /// Rereading in bands (as the reader does around a giant brand mark)
+  /// keeps every line once and adds no fragments.
+  @Test func bandsAddNoDuplicatesOrFragments() async throws {
+    let url = try #require(Bundle.module.url(forResource: "huckleberry-civitas", withExtension: "jpg", subdirectory: "Fixtures/labels"))
+    let data = try Data(contentsOf: url)
+    let plain = try await LabelReader.read(imageData: data).map(\.text)
+    let banded = try await LabelReader.read(imageData: data, forceBands: true).map(\.text)
+    #expect(banded.filter { $0.contains("HUCKLEBERRY") }.count == 1, "\(banded)")
+    #expect(banded.count <= plain.count + 2, "plain \(plain)\nbanded \(banded)")
+    let label = BeanLabelParser.parse(banded.map { LabelLine($0) }, today: BeanLabelTests.today, calendar: BeanLabelTests.utc)
+    #expect(label.roaster == "Huckleberry Roasters")
+  }
+
+  /// A band's line is new unless an existing line already holds it.
+  @Test func keepsOnlyNewLines() {
+    #expect(LabelReader.covers("ROAST/BLEND DATE", "BLEND DATE"))
+    #expect(!LabelReader.covers("HUCK", "HUCKLEBERRY ROASTERS"))
+  }
+}
